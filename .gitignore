@@ -1,0 +1,6 @@
+
+# C extensions
+*.so
+
+build/
+bin/
