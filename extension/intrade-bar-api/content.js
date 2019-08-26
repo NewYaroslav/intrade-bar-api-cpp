@@ -17,14 +17,27 @@ function get_cookie(cookie_name)
     return null;
 }
 
-function sec() //выполняется каждую секунду
+//---I STEP---
+//- enter page with login & password into demo page
+//- if login ok => 
+// - get_cookie via document.cookie/..., assign user_id, user_hash to global variable
+// - pass test balance request with actual cookie payload
+// 	- try if request not 200 => get_cookie via document.cookie/..., assign user_id, user_hash to global variable = try for 10 times
+//  - catch  
+//- if login not ok => print error message
+
+//---II STEP---
+//- implement js server on websockets
+//- listen on current port and update cookie payload by global variable/...
+
+function test_regular_request() //выполняется каждую секунду
 { 
 	console.log("sec: "+tick);
 	console.log("user_id: " + user_id);
 	console.log("user_hash: " + user_hash);
 	tick++;
 	
-	if(tick > 10) {
+	if(tick > tickStop) {
 		tick = 0;
 		console.log("Получаем баланс");
 		var param = 'user_id='+user_id+'&user_hash='+user_hash;
@@ -43,7 +56,7 @@ function sec() //выполняется каждую секунду
 		r.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 		r.send(param);
 		r.onreadystatechange=function() {
-			if(4==r.readyState&&200==r.status) {
+			if(r.readyState === 4 && r.status === 200) {
 				//socket_control.send(r.responseText);
 				console.log("ответ: " + r.responseText);
 			}
@@ -51,16 +64,18 @@ function sec() //выполняется каждую секунду
 	}
 }			 	
 
-setInterval(sec, 1000);// запускать функцию каждую секунду
+setInterval(test_regular_request, 1000);// запускать функцию каждую секунду
 
 var tick = 0;
 var is_init = false;
 var is_init_api = false;
 var is_init_api_control = false;
 var is_upload_hist = false;
+
 var socket;
 var socket_api;
 var socket_control;
+
 var amount = 30;
 var trend="down";
 var pair="EURUSD";
@@ -69,3 +84,9 @@ var time=60;
 
 var user_id = get_cookie("user_id");
 var user_hash = get_cookie("user_hash");
+
+//CONSTANTS
+const tickStop=10;
+const data = {
+				cookie: {}
+			 };
