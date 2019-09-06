@@ -62,8 +62,8 @@ int main() {
             const xtime::timestamp_t timestamp_pc,
             const xtime::timestamp_t timestamp_server,
             const int err){
-        int err_sprint = iApi.open_sprint_order(10, 10,intrade_bar::SELL,60*3);
-        cout << "open_sprint_order: " << err_sprint << endl;
+        int err_sprint = iApi.open_sprint_binary_option(10, 10,intrade_bar::SELL,60*3);
+        cout << "open_sprint_binary_option: " << err_sprint << endl;
 
         for(int i = 0; i < intrade_bar::CURRENCY_PAIRS; ++i) {
             //std::cout << intrade_bar::currency_pairs[i] << " " << prices[i] << std::endl;

@@ -11,12 +11,6 @@
 
 #include <array>
 #include <map>
-/*
-<div class="balance">
-<i class="fa fa-credit-card"></i>
-<span class="lightgray"></span>10 001,00 USD </div>
-<ul class="t_nav">
-*/
 
 namespace intrade_bar {
     using json = nlohmann::json;
@@ -103,7 +97,7 @@ namespace intrade_bar {
     class Bet {
     public:
         int id = 0;                             /**< Уникальный ID ставки */
-        int symbol_indx = 0;                    /**< Номер символа, на котором была совершена сделка */
+        int symbol_ind = 0;                     /**< Номер символа, на котором была совершена сделка */
         int contract_type = 0;                  /**< Тип контракта BUY или SELL */
         int duration = 0;                       /**< Длительность контракта в секундах */
         xtime::timestamp_t timestamp = 0;       /**< Метка времени начала контракта */
@@ -114,9 +108,19 @@ namespace intrade_bar {
 
         Bet() {};
 
-        Bet(
-                int id,
-                int symbol_indx,
+        /** \brief Инициализировать ставку
+         * \param id Уникальный номер ставки
+         * \param symbol_ind Номер валютной пары
+         * \param contract_type Тип контракта (BUY или SELL)
+         * \param duration Длительность опциона в секундах
+         * \param timestamp Метка времени начала опицона
+         * \param timestamp_end Метка времени конца опциона
+         * \param amount Размер опциона
+         * \param is_demo_account Флаг демо аккаунта
+         * \param is_rub_currency Флаг рублевого счета
+         */
+        Bet(    int id,
+                int symbol_ind,
                 int contract_type,
                 int duration,
                 xtime::timestamp_t timestamp,
@@ -125,7 +129,7 @@ namespace intrade_bar {
                 bool is_demo_account,
                 bool is_rub_currency) {
             Bet::id = id;
-            Bet::symbol_indx = symbol_indx;
+            Bet::symbol_ind = symbol_ind;
             Bet::contract_type = contract_type;
             Bet::duration = duration;
             Bet::timestamp = timestamp;
@@ -136,6 +140,8 @@ namespace intrade_bar {
         };
     };
 
+    /** \brief Класс API брокера Intrade.bar
+     */
     class IntradeBarApi {
     public:
 
@@ -147,10 +153,13 @@ namespace intrade_bar {
         };
 
     private:
-        struct curl_slist *http_headers_auth = NULL;    /**<  */
-        struct curl_slist *http_headers_switch = NULL;
-        struct curl_slist *http_headers_quotes = NULL;
+        struct curl_slist *http_headers_auth = NULL;    /**< Заголовки HTTP для авторизации */
+        struct curl_slist *http_headers_switch = NULL;  /**< Заголовки HTTP для переключателей настроек аккаунта*/
+        struct curl_slist *http_headers_quotes = NULL;  /**< Заголовки HTTP для загрузки исторических данных */
 
+        /** \brief Инициализировать заголовки для авторизации
+         * Данный метод нужен для внутреннего использования
+         */
         void init_http_headers_auth() {
             http_headers_auth = curl_slist_append(http_headers_auth, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_auth = curl_slist_append(http_headers_auth, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0");
@@ -160,6 +169,9 @@ namespace intrade_bar {
             http_headers_auth = curl_slist_append(http_headers_auth, "Upgrade-Insecure-Requests: 1");
         }
 
+        /** \brief Инициализировать заголовки для переключателей
+         * Данный метод нужен для внутреннего использования
+         */
         void init_http_headers_switch() {
             http_headers_switch = curl_slist_append(http_headers_switch, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_switch = curl_slist_append(http_headers_switch, "Accept: */*");
@@ -171,6 +183,9 @@ namespace intrade_bar {
             http_headers_switch = curl_slist_append(http_headers_switch, "X-Requested-With: XMLHttpRequest");
         }
 
+        /** \brief Инициализировать заголовки для загрузки исторических данных
+         * Данный метод нужен для внутреннего использования
+         */
         void init_http_headers_quotes() {
             http_headers_quotes = curl_slist_append(http_headers_quotes, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -180,6 +195,25 @@ namespace intrade_bar {
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Connection: keep-alive");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Content-Type: application/x-www-form-urlencoded");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Upgrade-Insecure-Requests: 1");
+        }
+
+        /** \brief Деинициализировать заголовки
+         * Данный метод нужен для внутреннего использования
+         */
+        void deinit_http_headers(struct curl_slist *http_headers) {
+            if(http_headers != NULL) {
+                curl_slist_free_all(http_headers);
+                http_headers = NULL;
+            }
+        }
+
+        /** \brief Деинициализировать заголовки
+         * Данный метод нужен для внутреннего использования
+         */
+        void deinit_all_http_headers() {
+            deinit_http_headers(http_headers_auth);
+            deinit_http_headers(http_headers_switch);
+            deinit_http_headers(http_headers_quotes);
         }
 
         std::string sert_file = "curl-ca-bundle.crt";   /**< Файл сертификата */
@@ -202,9 +236,24 @@ namespace intrade_bar {
         std::atomic<double> balance_real_rub;           /**< Баланс реального счета в рублях */
         std::atomic<double> balance_demo_usd;           /**< Баланс демо счета в долларах */
         std::atomic<double> balance_demo_rub;           /**< Баланс демо счета в рублях */
-
         std::atomic<bool> is_init_history_stream;
 
+    public:
+
+        /** \brief Получить баланс счета
+         * \param is_demo_account Настройки типа аккаунта, указать true если демо аккаунт
+         * \param is_rub_currency Настройки валюты аккаунта, указать true если RUB, если USD то false
+         * \return Баланс аккаунта
+         */
+        double get_balance(const bool is_demo_account, const bool is_rub_currency) {
+            return is_demo_account ? (is_rub_currency ? balance_demo_rub : balance_demo_usd) : (is_rub_currency ? balance_real_rub : balance_real_usd);
+        }
+
+    private:
+
+        /** \brief Инициализировать состояние профиля
+         * Данный метод нужен для внутреннего использования
+         */
         inline void init_profile_state() {
             is_api_init = false;
             is_demo_account = false;
@@ -226,7 +275,8 @@ namespace intrade_bar {
 
 
         /** \brief Добавить цену к списку цен валютных пар
-         * Данная функция является потокобезопасной
+         * Данный метод является потокобезопасным
+         * Данный метод нужен для внутреннего использования
          * \param symbol_index Номер валютной пары
          * \param price Цена
          * \param timestamp Метка времени
@@ -247,8 +297,9 @@ namespace intrade_bar {
             currency_pairs_mutex.unlock();
         }
 
-        /** \brief Очис
-         * Данная функция является потокобезопасной
+        /** \brief Очистить поток истории
+         * Данный метод является потокобезопасным
+         * Данный метод нужен для внутреннего использования
          */
         void clear_stream_history() {
             currency_pairs_mutex.lock();
@@ -259,7 +310,8 @@ namespace intrade_bar {
             currency_pairs_mutex.unlock();
         }
 
-        /** \brief Обработчик ответа
+        /** \brief Callback-функция для обработки ответа
+         * Данная функция нужна для внутреннего использования
          */
         static int intrade_bar_writer(char *data, size_t size, size_t nmemb, void *userdata) {
             int result = 0;
@@ -272,7 +324,8 @@ namespace intrade_bar {
         }
 
         /** \brief Callback-функция для обработки HTTP Header ответа
-         * Данная функция нужна, чтобы определить, какой тип сжатия данных используется (или сжатие не используется)
+         * Данный метод нужен, чтобы определить, какой тип сжатия данных используется (или сжатие не используется)
+         * Данный метод нужен для внутреннего использования
          */
         static int intrade_bar_header_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
             const char CONTENT_ENCODING_GZIP[] = "Content-Encoding: gzip";
@@ -298,13 +351,8 @@ namespace intrade_bar {
             return buffer_size;
         }
 
-        /** \brief Очистить переменную content encoding
-         */
-        //inline void clear_content_encoding_type() {
-        //    content_encoding = 0;
-        //}
-
         /** \brief Часть парсинга HTML
+         * Данный метод нужен для внутреннего использования
          */
         std::size_t get_string_fragment(
                 const std::string str,
@@ -323,6 +371,7 @@ namespace intrade_bar {
         }
 
         /** \brief Часть парсинга HTML
+         * Данная метод нужен для внутреннего использования
          */
         std::size_t get_string_fragment(
                 const std::string str,
@@ -336,7 +385,8 @@ namespace intrade_bar {
         }
 
         /** \brief Инициализация CURL
-         * Данная функция является общей инициализацией для разного рода запросов
+         * Данная метод является общей инициализацией для разного рода запросов
+         * Данный метод нужен для внутреннего использования
          * \param url URL запроса
          * \param body Тело запроса
          * \param response Ответ сервера
@@ -372,12 +422,8 @@ namespace intrade_bar {
             if(is_clear_cookie) curl_easy_setopt(curl, CURLOPT_COOKIELIST, "ALL");
             else curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookie_file.c_str()); // запускаем cookie engine
             curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_file.c_str()); // запишем cookie после вызова curl_easy_cleanup
-
-            //if(header_callback != NULL) {
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, userdata);
             curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
-            //}
-
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, http_headers);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
             //curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
@@ -385,6 +431,7 @@ namespace intrade_bar {
         }
 
         /** \brief POST запрос
+         * Данный vtnjl нужен для внутреннего использования
          * \param url URL сообщения
          * \param body Тело сообщения
          * \param http_headers Заголовки
@@ -434,8 +481,6 @@ namespace intrade_bar {
             return result;
         }
 
-
-
         /** \brief Фрагмент парсера провиля
          */
         int check_switch(const std::string value, const std::string &response, bool &state) {
@@ -480,7 +525,7 @@ namespace intrade_bar {
         /** \brief Получить профиль пользователя
          * \return вернет код ошибки или 0 в случае успешного завершения
          */
-        int get_profile() {
+        int request_profile() {
             const std::string url_profile = "https://intrade.bar/profile";
             const std::string body_profile;
             std::string response_profile;
@@ -493,7 +538,7 @@ namespace intrade_bar {
          * Данный метод узнает баланс депозита. При этом есть 4 варианта депозита
          * \return вернет код ошибки или 0 в случае успешного завершения
          */
-        int get_balance() {
+        int request_balance() {
             const std::string url = "https://intrade.bar/balance.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
@@ -532,7 +577,7 @@ namespace intrade_bar {
 
     public:
 
-        /** \brief Открыть сделку типа спринт
+        /** \brief Открыть бинарный опицон типа спринт
          * \param symbol_indx Номер символа
          * \param amount Размер опицона
          * \param contract_type Тип контракта (BUY или SELL)
@@ -541,7 +586,7 @@ namespace intrade_bar {
          * Если сервер отвечает ошибкой, вернет ERROR_RESPONSE
          * Остальные коды ошибок скорее всего будут указывать на иные ситуации
          */
-        int open_sprint_order(const int symbol_indx, const double amount, const int contract_type, const int duration) {
+        int open_sprint_binary_option(const int symbol_indx, const double amount, const int contract_type, const int duration) {
             int status = contract_type == BUY ? 1 : contract_type == SELL ? 2 : 0;
             if(status == 0) return INVALID_ARGUMENT;
             if(duration > MAX_DURATION || duration  < 0) return INVALID_ARGUMENT;
@@ -618,10 +663,11 @@ namespace intrade_bar {
             return OK;
         }
 
+    private:
         /** \brief Переключиться между типами аккаунта (Демо или реальный счет)
          * Каждый вызов данной функции вызывает переключение аккаунта на противоположный тип
          */
-        int switch_account() {
+        int request_switch_account() {
             const std::string url = "https://intrade.bar/user_real_trade.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
@@ -634,7 +680,7 @@ namespace intrade_bar {
         /** \brief Переключиться между валютой счета аккаунта (USD или RUB)
          * Каждый вызов данной функции вызывает переключение валюты счета на противоположный тип
          */
-        int switch_currency_account() {
+        int request_switch_currency() {
             const std::string url = "https://intrade.bar/user_currency_edit.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
@@ -643,6 +689,8 @@ namespace intrade_bar {
             if(response != "ok") return NO_ANSWER;
             return OK;
         }
+
+    public:
 
         /** \brief
          *
@@ -745,9 +793,9 @@ namespace intrade_bar {
             err = post_request(url_auth, body_auth, http_headers_auth, response_auth);
             if(err != OK) return err;
             // получаем из профиля настройки
-            err = get_profile();
+            err = request_profile();
             if(err != OK) return err;
-            err = get_balance();
+            err = request_balance();
             if(err != OK) return err;
             is_api_init = true; // ставим флаг готовности к работе
             return OK;
@@ -761,18 +809,7 @@ namespace intrade_bar {
         };
 
         ~IntradeBarApi() {
-            if(http_headers_auth != NULL) {
-                curl_slist_free_all(http_headers_auth);
-                http_headers_auth = NULL;
-            }
-            if(http_headers_switch != NULL) {
-                curl_slist_free_all(http_headers_switch);
-                http_headers_switch = NULL;
-            }
-            if(http_headers_quotes != NULL) {
-                curl_slist_free_all(http_headers_quotes);
-                http_headers_quotes = NULL;
-            }
+            deinit_all_http_headers();
         }
 
         /** \brief Установить пользовательсикй файл сертификата
@@ -801,7 +838,7 @@ namespace intrade_bar {
             int err = OK;
             std::chrono::seconds sec(delay);
             for(int i = 0; i < num_attempts; ++i) {
-                err = get_profile();
+                err = request_profile();
                 if(err == OK) break;
                 std::this_thread::sleep_for(sec);
             }
@@ -809,7 +846,7 @@ namespace intrade_bar {
             if(!is_demo && !is_demo_account) return OK;
             if(is_demo && is_demo_account) return OK;
             for(int i = 0; i < num_attempts; ++i) {
-                err = switch_account();
+                err = request_switch_account();
                 if(err == OK) break;
                 std::this_thread::sleep_for(sec);
             }
@@ -827,7 +864,7 @@ namespace intrade_bar {
             int err = OK;
             std::chrono::seconds sec(delay);
             for(int i = 0; i < num_attempts; ++i) {
-                err = get_profile();
+                err = request_profile();
                 if(err == OK) break;
                 std::this_thread::sleep_for(sec);
             }
@@ -835,7 +872,7 @@ namespace intrade_bar {
             if(!is_rub && !is_rub_currency) return OK;
             if(is_rub && is_rub_currency) return OK;
             for(int i = 0; i < num_attempts; ++i) {
-                err = switch_currency_account();
+                err = request_switch_currency();
                 if(err == OK) break;
                 std::this_thread::sleep_for(sec);
             }
@@ -895,6 +932,7 @@ namespace intrade_bar {
             }
         }
 
+    private:
         /** \brief Класс для работы с потоком котировок
          *
          */
@@ -1006,6 +1044,7 @@ namespace intrade_bar {
             }
         };
 
+    public:
 
         /** \brief Получить историю котировок потока
          * Данная функция может вернуть цены закрытия баров или открытия баров
