@@ -41,10 +41,10 @@ int main()
 {
     cout << "Hello world!" << endl;
         // делаем запрос баланса
-        std::string url = ("https://intrade.bar/balance.php");
+        std::string url = ("https://intrade.bar/login");
         cout << "Retrieving " << url << endl;
         // указываем параметры из кук сюда вместо ****
-        std::string body = "user_id=****&user_hash=****";
+        std::string body = "email=electroyar3@gmail.com&password=SsVDV5XoYUCZS&action=";
 
         cout << "body size: " << body.size() << endl;
         std::string content_length = "Content-Length: " + std::to_string(body.size());
@@ -70,17 +70,19 @@ int main()
 
         // заголовок запроса
         struct curl_slist *httpHeaders = NULL;
-        httpHeaders = curl_slist_append(httpHeaders, "Host: intrade.bar");
         httpHeaders = curl_slist_append(httpHeaders, "User-Agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0");
-        httpHeaders = curl_slist_append(httpHeaders, "Accept: */*");
-        httpHeaders = curl_slist_append(httpHeaders, "Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
-        httpHeaders = curl_slist_append(httpHeaders, "Accept-Encoding: gzip, deflate, br");
-        httpHeaders = curl_slist_append(httpHeaders, "Referer: https://intrade.bar/");
-        httpHeaders = curl_slist_append(httpHeaders, "Content-Type: application/x-www-form-urlencoded");
-        httpHeaders = curl_slist_append(httpHeaders, "X-Requested-With: XMLHttpRequest");
-        httpHeaders = curl_slist_append(httpHeaders, "Connection: keep-alive");
+        httpHeaders = curl_slist_append(httpHeaders, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0");
+        //httpHeaders = curl_slist_append(httpHeaders, "Host: intrade.bar");
+        //httpHeaders = curl_slist_append(httpHeaders, "User-Agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0");
+        //httpHeaders = curl_slist_append(httpHeaders, "Accept: */*");
+        //httpHeaders = curl_slist_append(httpHeaders, "Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
+        //httpHeaders = curl_slist_append(httpHeaders, "Accept-Encoding: gzip, deflate, br");
+        //httpHeaders = curl_slist_append(httpHeaders, "Referer: https://intrade.bar/");
+        //httpHeaders = curl_slist_append(httpHeaders, "Content-Type: application/x-www-form-urlencoded");
+        //httpHeaders = curl_slist_append(httpHeaders, "X-Requested-With: XMLHttpRequest");
+        //httpHeaders = curl_slist_append(httpHeaders, "Connection: keep-alive");
         // СЮДА ПИШЕМ КУКИ!!!!!!!!!!!!!!!!!!!!!
-        httpHeaders = curl_slist_append(httpHeaders, "Cookie: ****");
+        //httpHeaders = curl_slist_append(httpHeaders, "Cookie: ****");
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, httpHeaders);
         // добавляем тело запроса
@@ -103,7 +105,8 @@ int main()
             //cout << "decompressed_data\n";
             //std::string decompressed_data = gzip::decompress(compressed_pointer, buffer.size());
             //fout << decompressed_data << std::endl;
-            //fout.close();
+            fout << buffer;
+            fout.close();
             //Sleep(2000);
             //exit(0);
         } else {
