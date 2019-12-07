@@ -1,6 +1,13 @@
 
 # C extensions
 *.so
+*.cookie
 
 build/
-bin/
+storage/
+trash/
+trash/
+code_blocks/*/obj/
+bin/run-intrade-bar-downloader.bat
+bin/settings-intrade-bar-downloader.json
+bin/*.dll
