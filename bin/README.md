@@ -22,25 +22,32 @@
 ### Параметры программы
 
 /email | --email | /e | -e
+
 Ваш логин от аккаунта [intrade.bar](https://intrade.bar/)
 
 /password | --password | /p | -p
+
 Ваш пароль от аккаунта [intrade.bar](https://intrade.bar/)
 
 /path_store | --path_store | /ps | -ps
+
 Директория, где будут располагаться файлы исторических данных
 
 /use_day_off | --use_day_off | /skip_day_off | --skip_day_off | /sdo | -sdo
+
 Переменная типа *bool*, которая включает или отключает пропуск выходных дней (по UTC времени)
 
 /use_current_day | --use_current_day | /skip_current_day | --skip_current_day | /scd | -scd
+
 Переменная типа *bool*, которая включает или отключает пропуск текущего дня (по UTC времени).
 Это может пригодиться, если нужно скачать полные дни.
 
 /price_type | --price_type | /pt | -pt
+
 Тип используемой цены. Данный аргумент может принимать значения: <bid>, <ask>, <(bid+ask)/2>
 
 /path_json_file | --path_json_file | /pjf | -pjf
+
 Путь к файлу json с настройками
 
 ### Пример командной строки
