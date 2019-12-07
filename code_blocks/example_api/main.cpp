@@ -23,11 +23,16 @@ int main() {
     auth_file.close();
 
     intrade_bar::IntradeBarApi iApi;
-    iApi.connect(auth_json);
+    int err_connect = iApi.connect(auth_json);
+    std::cout << "connect code: " << err_connect << std::endl;
+    if(err_connect != 0) return 0;
+
+
 
     std::vector<double> prices;
     std::vector<xtime::timestamp_t> timestamps;
 
+    /*
     clock_t start = clock();
     int err = iApi.get_quotes(
         0,
@@ -44,7 +49,7 @@ int main() {
         std::cout << prices[i] << " " << timestamps[i] << std::endl;
     }
     cout << "get_quotes time: " << seconds << endl;
-
+*/
 #if(0)
     for(int i = 0; i < 20; ++i) {
         clock_t sprint_start = clock();
@@ -56,14 +61,22 @@ int main() {
     }
 #endif
 
-    if(1)
-    iApi.init_quotes_stream(intrade_bar::UPDATE_EVERY_END_MINUTE,[&](
-            std::array<double, intrade_bar::CURRENCY_PAIRS> &prices,
-            const xtime::timestamp_t timestamp_pc,
-            const xtime::timestamp_t timestamp_server,
-            const int err){
-        int err_sprint = iApi.open_sprint_binary_option(10, 10,intrade_bar::SELL,60*3);
-        cout << "open_sprint_binary_option: " << err_sprint << endl;
+    int err_sprint = iApi.open_sprint_binary_option(10, 1,intrade_bar::SELL, 60*3);
+    std::cout << "open_sprint_binary_option: " << err_sprint << std::endl;
+
+    if(0)
+    iApi.init_quotes_stream(
+            intrade_bar::UPDATE_EVERY_END_MINUTE,
+            [&](
+                std::array<double, intrade_bar::CURRENCY_PAIRS> &prices,
+                const xtime::timestamp_t timestamp_pc,
+                const xtime::timestamp_t timestamp_server,
+                const int err){
+        int seconds = xtime::get_second_day(timestamp_pc);
+        if(seconds == 59) {
+            int err_sprint = iApi.open_sprint_binary_option(10, 1,intrade_bar::SELL, 60*3);
+            cout << "open_sprint_binary_option: " << err_sprint << endl;
+        }
 
         for(int i = 0; i < intrade_bar::CURRENCY_PAIRS; ++i) {
             //std::cout << intrade_bar::currency_pairs[i] << " " << prices[i] << std::endl;
