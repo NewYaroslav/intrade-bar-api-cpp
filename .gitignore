@@ -16,3 +16,4 @@ code_blocks/*/bin/
 bin/run-intrade-bar-downloader.bat
 bin/settings-intrade-bar-downloader.json
 bin/*.dll
+*.pdn
