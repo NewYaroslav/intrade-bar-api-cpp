@@ -1,4 +1,4 @@
-![logo](doc/logo/logo-320-160-v2.png)
+![logo](doc/logo/logo-640-160-v3.png)
 # intrade-bar-api-cpp
 
 C++ header-only api для работы с брокером [intrade.bar](https://intrade.bar/)
