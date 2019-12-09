@@ -83,6 +83,18 @@ namespace intrade_bar_common {
          * c расширенным именем (со знаком / между валютными парами)
          */
 
+    static const std::map<std::string, int> extended_name_currency_pairs_indx = {
+        {"EUR/USD",0},{"USD/JPY",1},{"GBP/USD",2},{"USD/CHF",3},
+        {"USD/CAD",4},{"EUR/JPY",5},{"AUD/USD",6},{"NZD/USD",7},
+        {"EUR/GBP",8},{"EUR/CHF",9},{"AUD/JPY",10},{"GBP/JPY",11},
+        {"CHF/JPY",12},{"EUR/CAD",13},{"AUD/CAD",14},{"CAD/JPY",15},
+        {"NZD/JPY",16},{"AUD/NZD",17},{"GBP/AUD",18},{"EUR/AUD",19},
+        {"GBP/CHF",20},{"EUR/NZD",21},{"AUD/CHF",22},{"GBP/NZD",23},
+        {"GBP/CAD",24},{"XAU/USD",25}
+    };  /**< Пары ключ-значение для имен символов со знаком / между валютными парами
+         * и их порядкового номера
+         */
+
     static const std::map<std::string, int> currency_pairs_indx = {
         {"EURUSD",0},{"USDJPY",1},{"GBPUSD",2},{"USDCHF",3},
         {"USDCAD",4},{"EURJPY",5},{"AUDUSD",6},{"NZDUSD",7},
@@ -92,6 +104,19 @@ namespace intrade_bar_common {
         {"GBPCHF",20},{"EURNZD",21},{"AUDCHF",22},{"GBPNZD",23},
         {"GBPCAD",24},{"XAUUSD",25}
     };  /**< Пары ключ-значение для имен символов и их порядкового номера */
+
+    static const std::array<uint32_t, CURRENCY_PAIRS>
+        pricescale_currency_pairs = {
+        100000,1000,100000,100000,
+        100000,1000,100000,100000,
+        100000,100000,1000,1000,
+        1000,100000,100000,1000,
+        1000,100000,100000,100000,
+        100000,100000,100000,100000,
+        100000,100000,
+    };  /**< Массив множителя валютных пар
+         * (валютные пары с JPY имеют множитель 1000)
+         */
 
     /// Варнианты сделок
     enum {

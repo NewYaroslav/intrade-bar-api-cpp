@@ -19,11 +19,42 @@ function get_cookie(cookie_name)
 
 function sec() //выполняется каждую секунду
 { 
-	console.log("sec: "+tick);
-	console.log("user_id: " + user_id);
-	console.log("user_hash: " + user_hash);
+	//console.log("sec: "+tick);
+	//console.log("user_id: " + user_id);
+	//console.log("user_hash: " + user_hash);
 	tick++;
 	
+	if(is_init == false) {
+		(socket=new WebSocket("wss://mr-axiano.com/fxcm2/")).onopen=function(){
+			console.log("Соединение установлено.");
+			is_init = true;
+		},
+		socket.onclose=function(e){
+			if(e.wasClean) {
+				log("Соединение закрыто чисто");
+			} else {
+				console.log("Обрыв соединения");
+				socket.close();
+			}
+			console.log("Код: "+e.code+" причина: "+e.reason);
+			// перезагрузим страницу
+			//location.reload();
+			is_init = false;
+		},
+		socket.onmessage=function(e){
+			console.log("Получены данные "+e.data);
+			//message_in = e.data;
+		},
+		socket.onerror=function(e){
+			console.log("Ошибка "+e.message);
+			if(is_init) socket.close();
+			// перезагрузим страницу
+			//location.reload();
+			is_init = false;
+		}
+	}
+	
+	if(0)
 	if(tick > 10) {
 		tick = 0;
 		console.log("Получаем баланс");
@@ -49,6 +80,7 @@ function sec() //выполняется каждую секунду
 			}
 		};
 	}
+	
 }			 	
 
 setInterval(sec, 1000);// запускать функцию каждую секунду
