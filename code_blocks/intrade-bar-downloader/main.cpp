@@ -25,8 +25,10 @@
 #include "intrade-bar-api.hpp"
 #include "xquotes_history.hpp"
 
-#define PROGRAM_VERSION "1.1"
-#define PROGRAM_DATE    "07.12.2019"
+#define PROGRAM_VERSION "1.2"
+#define PROGRAM_DATE    "09.12.2019"
+
+#define DO_NOT_USE 0
 
 using namespace std;
 
@@ -38,8 +40,10 @@ int main(int argc, char **argv) {
     uint32_t price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2;
 
     /* Загружаем параметры с коротким ключем */
+#if(DO_NOT_USE)
     std::string email = std::string(intrade_bar_common::get_argument(argc, argv, "e"));
     std::string password = std::string(intrade_bar_common::get_argument(argc, argv, "p"));
+#endif
     std::string path_json_file = std::string(intrade_bar_common::get_argument(argc, argv, "pjf"));
     std::string path_store = std::string(intrade_bar_common::get_argument(argc, argv, "ps"));
     std::string str_day_off = std::string(intrade_bar_common::get_argument(argc, argv, "sdo"));
@@ -47,8 +51,10 @@ int main(int argc, char **argv) {
     std::string str_price_type = std::string(intrade_bar_common::get_argument(argc, argv, "pt"));
 
     /* Загружаем параметры с длинным ключем (если с коротким не были загружены) */
+#if(DO_NOT_USE)
     if(email.empty()) email =  std::string(intrade_bar_common::get_argument(argc, argv, "email"));
     if(password.empty()) password =  std::string(intrade_bar_common::get_argument(argc, argv, "password"));
+#endif
     if(path_json_file.empty()) path_json_file =  std::string(intrade_bar_common::get_argument(argc, argv, "path_json_file"));
     if(path_store.empty()) path_store = std::string(intrade_bar_common::get_argument(argc, argv, "path_store"));
     if(str_price_type.empty()) str_price_type = std::string(intrade_bar_common::get_argument(argc, argv, "price_type"));
@@ -78,10 +84,12 @@ int main(int argc, char **argv) {
             auth_file >> auth_json;
             auth_file.close();
             /* устаналиваем параметры */
+#if(DO_NOT_USE)
             if(auth_json["email"] != nullptr)
                 email = auth_json["email"];
             if(auth_json["password"] != nullptr)
                 password = auth_json["password"];
+#endif
             if(auth_json["path_store"] != nullptr)
                 path_store = auth_json["path_store"];
             if(auth_json["use_current_day"] != nullptr) {
@@ -116,6 +124,7 @@ int main(int argc, char **argv) {
     }
 
     /* проверяем настройки */
+#if(DO_NOT_USE)
     if(email.empty()) {
         std::cout << "parameter error: email" << std::endl;
         return intrade_bar_common::INVALID_ARGUMENT;
@@ -124,19 +133,21 @@ int main(int argc, char **argv) {
         std::cout << "parameter error: password" << std::endl;
         return intrade_bar_common::INVALID_ARGUMENT;
     }
+#endif
     if(path_store.empty()) {
         std::cout << "parameter error: path_store" << std::endl;
         return intrade_bar_common::INVALID_ARGUMENT;
     }
 
-    /* подключаемся к брокеру */
     intrade_bar::IntradeBarApi iApi;
+#if(DO_NOT_USE)
+    /* подключаемся к брокеру */
     int err_connect = iApi.simple_connection(email, password);
-    //int err_connect = iApi.connect(auth_json);
     if(err_connect != 0) {
         std::cout << "authorisation error!" << std::endl;
         return intrade_bar_common::AUTHORIZATION_ERROR;
     }
+#endif
 
     /* выводим параметры загрузки истории */
     std::cout << "download options:" << std::endl;
@@ -307,7 +318,7 @@ int main(int argc, char **argv) {
                 << "data writing to file completed: " << intrade_bar_common::currency_pairs[symbol]
                 << " " << xtime::get_str_date(xtime::get_first_timestamp_day(min_timestamp))
                 << " - " << xtime::get_str_date(xtime::get_first_timestamp_day(timestamp))
-                << std::endl;
+                << std::endl << std::endl;
     } // for symbol
     return intrade_bar_common::OK;
 }

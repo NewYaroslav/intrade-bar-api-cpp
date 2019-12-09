@@ -1,12 +1,11 @@
 # Описание программ
 
 * build_brotli - сборка библиотеки brotli (не нужно)
+* build_zstd - сборка библиотеки zstd
 * example_api - пример API брокера
 * example_historical_data - пример загрузки исторических данных
 * example-websocket - пример получения потока котировок от брокера intrade.bar
 * intrade-bar-downloader - программа для загрузки исторических данных
-* test_curl - проверка CURL
-* check-websocket - проверка вебсокета
 
 ### intrade-bar-downloader
 

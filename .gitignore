@@ -13,8 +13,6 @@ code_blocks/*/*.depend
 code_blocks/*/*.layout
 code_blocks/*/auth.json
 code_blocks/*/bin/
-bin/run-intrade-bar-downloader.bat
-bin/settings-intrade-bar-downloader.json
 bin/*.dll
 *.pdn
 *.gch

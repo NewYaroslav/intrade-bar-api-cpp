@@ -997,9 +997,9 @@ namespace intrade_bar {
                 "-" + std::to_string(iDateTime.month) +
                 "-" + std::to_string(iDateTime.day) +
                 "&time1=" + std::to_string(iDateTime.hour) +
-                ":" + std::to_string(iDateTime.minutes) +
+                ":" + std::to_string(iDateTime.minute) +
                 "&time2=" + std::to_string(iDateTimeEnd.hour) +
-                ":" + std::to_string(iDateTimeEnd.minutes) +
+                ":" + std::to_string(iDateTimeEnd.minute) +
                 "&name_method=data_tick_load";
             std::string response_quotes;
             int err = post_request(

@@ -21,14 +21,6 @@
 
 ### Параметры программы
 
-/email | --email | /e | -e
-
-Ваш логин от аккаунта [intrade.bar](https://intrade.bar/)
-
-/password | --password | /p | -p
-
-Ваш пароль от аккаунта [intrade.bar](https://intrade.bar/)
-
 /path_store | --path_store | /ps | -ps
 
 Директория, где будут располагаться файлы исторических данных
@@ -55,7 +47,7 @@
 Пример снизу запишет файлы исторических данных в папку *../storage*, пропустит выходные дни и текущий день, а также использует цену *(bid+ask)/2*.
 
 ```
-intrade-bar-downloader.exe /email "user_name@mail.com" /password "derparol" /use_day_off false /use_current_day false /price_type "(bid+ask)/2" /path_store "../storage"
+intrade-bar-downloader.exe /use_day_off false /use_current_day false /price_type "(bid+ask)/2" /path_store "../storage"
 
 ```
 ### Пример командной строки для задания настроек через файл JSON
@@ -68,8 +60,6 @@ intrade-bar-downloader.exe /path_json_file "settings-intrade-bar-downloader.json
 
 ```json
 {
-	"email":"user_name@gmail.com",
-	"password":"derparol",
 	"path_store":"../storage",
 	"use_current_day":true,
 	"use_day_off":true,

@@ -1,6 +1,4 @@
 {
-	"email":"username3@gmail.com",
-	"password":"12345",
 	"path_store":"../storage",
 	"use_current_day":true,
 	"use_day_off":true,

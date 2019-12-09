@@ -261,6 +261,7 @@ namespace intrade_bar {
                         error_message = "unknown error";
                         is_error = true;
                     }
+					std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 } // while
             });
             client_thread.detach();
@@ -269,7 +270,7 @@ namespace intrade_bar {
         /** \brief Состояние соединения
          * \return вернет true, если соединение есть
          */
-        inline bool connect() {
+        inline bool connected() {
             return is_websocket_init;
         }
 
@@ -282,7 +283,7 @@ namespace intrade_bar {
             while(!is_error && !is_websocket_init) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
-            return connect();
+            return is_websocket_init;
         }
 
         /** \brief Получить метку времени ПК

@@ -14,17 +14,14 @@
 
 Данное утверждение справедливо, если использовать цену (bid+ask)/2!
 
-4) Программа скачивает данные в специальный формат qhs5. Данный формат использует библиотека xquotes_history. Данный формат содержит все цены бара, а также его объем. Преобразовать данный формат в файл csv можно при помощи специальной утилиты xqhtools.exe. Подробнее смотрите в README в папке bin репозитория xquotes_history.
+4) Программа скачивает данные в специальный формат qhs5. Данный формат использует библиотека xquotes_history. 
+Данный формат содержит все цены бара, а также его объем. 
+Преобразовать данный формат в файл csv можно при помощи специальной утилиты xqhtools.exe. 
+Подробнее смотрите в README в папке bin репозитория xquotes_history: https://github.com/NewYaroslav/xquotes_history
 5) Настройки программы можно задать как через аргументы, так и через json файл.
 6) Программа скачивает котировки всех валютных пар (в том числе и золото), которые есть у брокера intrade.bar.
 
 Параметры программы:
-
-/email | --email | /e | -e 
-Ваш логин от аккаунта intrade.bar
-
-/password | --password | /p | -p 
-Ваш пароль от аккаунта intrade.bar
 
 /path_store | --path_store | /ps | -ps 
 Директория, где будут располагаться файлы исторических данных
@@ -53,15 +50,14 @@ intrade-bar-downloader.exe /path_json_file "settings-intrade-bar-downloader.json
 Пример файла JSON:
 
 {
-    "email":"user_name@gmail.com",
-    "password":"derparol",
     "path_store":"../storage",
     "use_current_day":true,
     "use_day_off":true,
     "price_type":"(bid+ask)/2"
 }
 
-Также, в качестве образца файла JSON можете взять файл example-intrade-bar-downloader.json
+Также, в качестве образца файла JSON можете взять файл settings-intrade-bar-downloader.json
 
-Исходный код
-Исходный код данной программы вы найдете в папке intrade-bar-api-cpp\code_blocks\intrade-bar-downloader
+ИСХОДНЫЙ КОД
+
+Исходный код данной программы вы найдете в папке "intrade-bar-api-cpp\code_blocks\intrade-bar-downloader"

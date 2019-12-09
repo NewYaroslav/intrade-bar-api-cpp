@@ -177,18 +177,21 @@ namespace intrade_bar_common {
         return "";
     }
 
+    /** \brief Напечатать линию
+     * \param message Сообщение
+     */
     void print_line(std::string message) {
-        static uint32_t message_size = 0;
-        if(message_size > 0) {
-            for(size_t i = 0; i < message_size; ++i) {
-                std::cout << " ";
-            }
-            std::cout << "\r";
-        }
-        std::cout.width(message.size() + 1);
-        std::cout << message << "\r";
-        message_size = message.size();
-    }
+		static uint32_t message_size = 0;
+		if(message_size > 0) {
+			for(size_t i = 0; i < message_size; ++i) {
+				std::cout << " ";
+			}
+			std::cout << "\r";
+		}
+		std::cout.width(message.size());
+		std::cout << message << "\r";
+		message_size = message.size();
+	}
 };
 
 #endif // INTRADE_BAR_COMMON_HPP_INCLUDED
