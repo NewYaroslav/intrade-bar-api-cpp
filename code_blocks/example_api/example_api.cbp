@@ -29,15 +29,13 @@
 					<Add directory="../../lib/zlib" />
 					<Add directory="../../lib/xtime_cpp/src" />
 					<Add directory="../../lib/json/include" />
+					<Add directory="../../lib/xquotes_history/include" />
 					<Add directory="../../include" />
 					<Add directory="../../lib" />
-					<Add directory="../../lib/brotli/c/include" />
-					<Add directory="../../lib/backward-cpp" />
 				</Compiler>
 				<Linker>
 					<Add library="../../lib/curl-7.60.0-win64-mingw/lib/libcurl.a" />
 					<Add library="../../lib/curl-7.60.0-win64-mingw/lib/libcurl.dll.a" />
-					<Add library="brotli" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/bin" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/include" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/lib" />
@@ -45,10 +43,9 @@
 					<Add directory="../../lib/zlib" />
 					<Add directory="../../lib/xtime_cpp/src" />
 					<Add directory="../../lib/json/include" />
+					<Add directory="../../lib/xquotes_history/include" />
 					<Add directory="../../include" />
 					<Add directory="../../lib" />
-					<Add directory="../../lib/brotli/c/include" />
-					<Add directory="../../lib/backward-cpp" />
 				</Linker>
 			</Target>
 		</Build>
@@ -56,7 +53,8 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="../../include/intrade-bar_api.hpp" />
+		<Unit filename="../../include/intrade-bar-api.hpp" />
+		<Unit filename="../../include/intrade-bar-common.hpp" />
 		<Unit filename="../../lib/backward-cpp/backward.hpp" />
 		<Unit filename="../../lib/xtime_cpp/src/xtime.cpp" />
 		<Unit filename="../../lib/xtime_cpp/src/xtime.hpp" />

@@ -10,7 +10,7 @@
 #include <nlohmann/json.hpp>
 #include <xtime.hpp>
 
-#include "intrade-bar_api.hpp"
+#include "intrade-bar-api.hpp"
 
 using namespace std;
 
@@ -27,12 +27,19 @@ int main() {
     std::cout << "connect code: " << err_connect << std::endl;
     if(err_connect != 0) return 0;
 
+    std::cout << "user id: " << iApi.get_user_id() << std::endl;
+    std::cout << "user hash: " << iApi.get_user_hash() << std::endl;
+    std::cout << "balance: " << iApi.get_balance() << std::endl;
+    std::cout << "is demo: " << iApi.demo_account() << std::endl;
+    std::cout << "is account currency RUB: " << iApi.account_rub_currency() << std::endl;
+
+#if(0)
+    std::vector<double> prices;
+    std::vector<xtime::timestamp_t> timestamps;
 
 
     std::vector<double> prices;
     std::vector<xtime::timestamp_t> timestamps;
-
-    /*
     clock_t start = clock();
     int err = iApi.get_quotes(
         0,
@@ -49,7 +56,8 @@ int main() {
         std::cout << prices[i] << " " << timestamps[i] << std::endl;
     }
     cout << "get_quotes time: " << seconds << endl;
-*/
+#endif
+
 #if(0)
     for(int i = 0; i < 20; ++i) {
         clock_t sprint_start = clock();
@@ -61,29 +69,15 @@ int main() {
     }
 #endif
 
-    int err_sprint = iApi.open_sprint_binary_option(10, 1,intrade_bar::SELL, 60*3);
+    double delay = 0;
+    uint64_t id_deal = 0;
+    xtime::timestamp_t timestamp_open = 0;
+    int err_sprint = iApi.open_bo_sprint(10, 1,intrade_bar::SELL, 60*3, delay, id_deal, timestamp_open);
     std::cout << "open_sprint_binary_option: " << err_sprint << std::endl;
+    std::cout << "delay: " << delay << std::endl;
+    std::cout << "id_deal: " << id_deal << std::endl;
+    std::cout << "timestamp_open: " << timestamp_open << std::endl;
 
-    if(0)
-    iApi.init_quotes_stream(
-            intrade_bar::UPDATE_EVERY_END_MINUTE,
-            [&](
-                std::array<double, intrade_bar::CURRENCY_PAIRS> &prices,
-                const xtime::timestamp_t timestamp_pc,
-                const xtime::timestamp_t timestamp_server,
-                const int err){
-        int seconds = xtime::get_second_day(timestamp_pc);
-        if(seconds == 59) {
-            int err_sprint = iApi.open_sprint_binary_option(10, 1,intrade_bar::SELL, 60*3);
-            cout << "open_sprint_binary_option: " << err_sprint << endl;
-        }
-
-        for(int i = 0; i < intrade_bar::CURRENCY_PAIRS; ++i) {
-            //std::cout << intrade_bar::currency_pairs[i] << " " << prices[i] << std::endl;
-        }
-        std::cout << "pc: " << xtime::get_str_time(timestamp_pc) << std::endl;
-        std::cout << "server: " << xtime::get_str_time(timestamp_server) << std::endl;
-    });
     while(true) {
         std::this_thread::yield();
     }

@@ -50,11 +50,11 @@ namespace intrade_bar_common {
     const uint32_t MIN_BET_GC_USD = 10;
     const uint32_t MIN_BET_GC_RUB = 500;
 
-    const uint32_t GC_INDEX = 25;       /**< Номер символа "Золото" */
+    const uint32_t XAUUSD_INDEX = 25;   /**< Номер символа "Золото" */
 
 
     /// Варианты настроек для исторических данных котировок
-    enum {
+    enum HistType {
         FXCM_USE_HIST_QUOTES_BID = 0,           /**< Использовать только цену bid в исторических данных */
         FXCM_USE_HIST_QUOTES_ASK = 1,           /**< Использовать только цену ask в исторических данных */
         FXCM_USE_HIST_QUOTES_BID_ASK_DIV2 = 2,  /**< Использовать цену (bid + ask)/2 в исторических данных */
@@ -119,7 +119,7 @@ namespace intrade_bar_common {
          */
 
     /// Варнианты сделок
-    enum {
+    enum BoType {
         BUY = 1,    ///< Сделка на повышение курса
         CALL = 1,   ///< Сделка на повышение курса
         SELL = -1,  ///< Сделка на понижение
@@ -127,7 +127,7 @@ namespace intrade_bar_common {
     };
 
     /// Варианты состояния ошибок
-    enum {
+    enum ErrorType {
         OK = 0,                             ///< Ошибки нет
         CURL_CANNOT_BE_INIT = -1,           ///< CURL не может быть инициализирован
         AUTHORIZATION_ERROR = -2,           ///< Ошибка авторизации
@@ -146,18 +146,11 @@ namespace intrade_bar_common {
     };
 
     /// Параметры счета
-    enum {
+    enum AccountCurrencyType {
         USD = 0,    ///< Долларовый счет
         RUB = 1,    ///< Рублевый счет
         DEMO = 0,   ///< Демо счет
         REAL = 1,   ///< Реальный счет
-    };
-
-    /// Параметры обновления цены
-    enum {
-        UPDATE_EVERY_SECOND = 0,
-        UPDATE_EVERY_END_MINUTE = 1,
-        UPDATE_EVERY_START_MINUTE = 2,
     };
 
     /** \brief Получить аргумент командной строки

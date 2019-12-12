@@ -93,7 +93,7 @@ int main() {
     std::vector<xquotes_common::Candle> new_candles;
 
     int err_act = iApi.get_historical_data(
-        0,
+        9,
         xtime::get_timestamp(4,12,2019, 20, 45),
         xtime::get_timestamp(4,12,2019, 20, 45),
         new_candles,

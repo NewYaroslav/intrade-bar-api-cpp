@@ -1,11 +1,11 @@
 ![logo](doc/logo/logo-640-160-v3.png)
 # intrade-bar-api-cpp
 
-C++ header-only api для работы с брокером [intrade.bar](https://intrade.bar/)
+C++ header-only api для работы с брокером [intrade.bar](https://intrade.bar/67204)
 
 ## Описание
 
-*C++ header-only* библиотека для работы с брокером [https://intrade.bar/](https://intrade.bar/)
+*C++ header-only* библиотека для работы с брокером [https://intrade.bar/](https://intrade.bar/67204)
 
 **На данный момент библиотека находится в разработке**
 
@@ -13,7 +13,7 @@ C++ header-only api для работы с брокером [intrade.bar](https:
 
 ### Загрузка исторических данных котировок
 
-Программа *intrade-bar-downloader.exe* способна загружать исторические данные всех символов (валютные пары и золото), представленные у брокера [intrade.bar](https://intrade.bar/).
+Программа *intrade-bar-downloader.exe* способна загружать исторические данные всех символов (валютные пары и золото), представленные у брокера [intrade.bar](https://intrade.bar/67204).
 
 * Готовая сборка программы находится в папке *bin*. 
 * Иструкция по использованию расположена здесь *bin/README.md*. 
