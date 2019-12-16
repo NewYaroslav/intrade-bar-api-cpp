@@ -19,6 +19,16 @@ C++ header-only api для работы с брокером [intrade.bar](https:
 * Иструкция по использованию расположена здесь *bin/README.md*. 
 * Недостающие *dll* файлы можно найти в *bin/dll.7z*.
 * Исходный код программы для загрузки исторических данных находится здесь *code_blocks/intrade-bar-downloader*.
+* Брокер поддерживает на данный момент следующие валютные пары (22 шт): 
+	EURUSD,USDJPY,~GBPUSD~,USDCHF,
+	USDCAD,EURJPY,AUDUSD,NZDUSD,
+	EURGBP,EURCHF,AUDJPY,GBPJPY,
+	~CHFJPY~,EURCAD,AUDCAD,CADJPY,
+	NZDJPY,AUDNZD,GBPAUD,EURAUD,
+	GBPCHF,~EURNZD~,AUDCHF,GBPNZD,
+	~GBPCAD~,XAUUSD
+	
+**Зачеркнутые валютные пары теперь не поддерживаются брокером**
 
 ## Как начать использовать
 

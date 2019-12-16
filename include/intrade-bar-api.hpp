@@ -112,7 +112,7 @@ namespace intrade_bar {
 
         static const int POST_STANDART_TIME_OUT = 10;   /**< Время ожидания ответа сервера для разных запросов */
         static const int POST_QUOTES_TIME_OUT = 30;     /**< Время ожидания ответа сервера для запроса котировок */
-        static const int POST_TRADE_TIME_OUT = 1;       /**< Время ожидания ответа сервера для сделок */
+        static const int POST_TRADE_TIME_OUT = 2;       /**< Время ожидания ответа сервера для сделок */
         static const int GET_QUOTES_HISTORY_TIME_OUT = 10;  /**< Время ожидания ответа сервера для запроса исторических данных котировок */
 
         std::string user_id;                            /**< USER_ID получаем от сервера при авторизации */
@@ -125,7 +125,6 @@ namespace intrade_bar {
         std::atomic<double> balance_real_rub;           /**< Баланс реального счета в рублях */
         std::atomic<double> balance_demo_usd;           /**< Баланс демо счета в долларах */
         std::atomic<double> balance_demo_rub;           /**< Баланс демо счета в рублях */
-        std::atomic<bool> is_init_history_stream;
 
         struct curl_slist *http_headers_auth = nullptr;    /**< Заголовки HTTP для авторизации */
         struct curl_slist *http_headers_switch = nullptr;  /**< Заголовки HTTP для переключателей настроек аккаунта*/
@@ -196,6 +195,15 @@ namespace intrade_bar {
             http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Connection: keep-alive");
         }
 
+        /** \brief Инициализировать все заголовки
+         */
+        void init_all_http_headers() {
+            init_http_headers_auth();
+            init_http_headers_switch();
+            init_http_headers_quotes_history();
+            init_http_headers_open_bo();
+        }
+
         /** \brief Деинициализировать заголовки
          * Данный метод нужен для внутреннего использования
          */
@@ -228,8 +236,6 @@ namespace intrade_bar {
             balance_real_rub = 0.0;
             balance_demo_usd = 0.0;
             balance_demo_rub = 0.0;
-
-            is_init_history_stream = false;
         }
 
         std::vector<Bet> list_bet;  /**< Список ставок */
@@ -390,6 +396,7 @@ namespace intrade_bar {
             curl_easy_cleanup(curl);
             if(result == CURLE_OK) {
                 if(content_encoding == USE_CONTENT_ENCODING_GZIP) {
+                    if(buffer.size() == 0) return NO_ANSWER;
                     const char *compressed_pointer = buffer.data();
                     response = gzip::decompress(compressed_pointer, buffer.size());
                 } else
@@ -397,7 +404,7 @@ namespace intrade_bar {
                     response = buffer;
                 } else
                 if(content_encoding == USE_CONTENT_ENCODING_NOT_SUPPORED) {
-                    return  CONTENT_ENCODING_NOT_SUPPORT;
+                    return CONTENT_ENCODING_NOT_SUPPORT;
                 } else {
                     response = buffer;
                 }
@@ -645,7 +652,7 @@ namespace intrade_bar {
          * \param is_rub_currency Настройки валюты аккаунта, указать true если RUB, если USD то false
          * \return Баланс аккаунта
          */
-        double get_balance() {
+        inline double get_balance() {
             return is_demo_account ? (is_rub_currency ? balance_demo_rub : balance_demo_usd) :
                 (is_rub_currency ? balance_real_rub : balance_real_usd);
         }
@@ -655,9 +662,25 @@ namespace intrade_bar {
          * \param is_rub_currency Настройки валюты аккаунта, указать true если RUB, если USD то false
          * \return Баланс аккаунта
          */
-        double get_balance(const bool is_demo_account, const bool is_rub_currency) {
+        inline double get_balance(const bool is_demo_account, const bool is_rub_currency) {
             return is_demo_account ? (is_rub_currency ? balance_demo_rub : balance_demo_usd) :
                 (is_rub_currency ? balance_real_rub : balance_real_usd);
+        }
+
+        /** \brief Установить пользовательсикй файл сертификата
+         * Можно установить только до запуска работы API!
+         * \param user_sert_file файл сертификата
+         */
+        void set_sert_file(const std::string user_sert_file) {
+            if(is_api_init) return;
+            sert_file = user_sert_file;
+        }
+
+        /** \brief Получить посленюю ошибку
+         */
+        std::string get_last_error() {
+            if(!is_api_init) return std::string();
+            return std::string(error_buffer);
         }
 
         /** \brief Открыть бинарный опицон типа спринт
@@ -677,6 +700,9 @@ namespace intrade_bar {
                 double &delay,
                 uint64_t &id_deal,
                 xtime::timestamp_t &open_timestamp) {
+            /* пропускаем те валютные пары, которых нет у брокера */
+            if(!is_currency_pairs[symbol_index]) return DATA_NOT_AVAILABLE;
+
             int status = (contract_type == BUY || contract_type == CALL) ? 1 :
                 (contract_type == SELL || contract_type == PUT) ? 2 : 0;
             if(status == 0) return INVALID_ARGUMENT;
@@ -715,7 +741,11 @@ namespace intrade_bar {
             std::string response_sprint;
 
             clock_t sprint_start = clock();
-            int err = post_request(url_open_bo, body_sprint, http_headers_open_bo, response_sprint);
+            int err = post_request(
+                url_open_bo,
+                body_sprint,
+                http_headers_open_bo,
+                response_sprint);
             if(err != OK) return err;
             clock_t sprint_end = clock();
             delay = (double)(sprint_end - sprint_start) / CLOCKS_PER_SEC;
@@ -725,7 +755,6 @@ namespace intrade_bar {
             std::size_t alert_pos = response_sprint.find("alert");
             if(error_pos != std::string::npos) return ERROR_RESPONSE;
             else if(alert_pos != std::string::npos) return ALERT_RESPONSE;
-
             if(response_sprint.size() < 10) return NO_ANSWER;
 
             /* находим метку времени и номер сделки */
@@ -749,7 +778,38 @@ namespace intrade_bar {
                 is_rub_currency
             ));
 
-            //std::cout << "bet " << xtime::get_str_date_time(timestamp_open) << std::endl;
+            return OK;
+        }
+
+        /** \brief Проверить бинарный опицон
+         * \param id_deal Номер уникальной сделки
+         * \param price Цена закрытия оцпиона
+         * \param profit Профит опциона (если будет равен 0, значит сделка убыточная)
+         * \return состояние ошибки
+         */
+        int check_bo(const uint64_t id_deal, double &price, double &profit) {
+            const std::string url_open_bo("https://intrade.bar/trade_check2.php");
+            std::string body_check("user_id=");
+                body_check += user_id;
+                body_check += "&user_hash=";
+                body_check += user_hash;
+                body_check += "&trade_id=";
+                body_check += std::to_string(id_deal);
+            std::string response;
+            int err = post_request(
+                url_open_bo,
+                body_check,
+                http_headers_open_bo,
+                response);
+            if(err != OK) return err;
+            std::cout << response << std::endl;
+            std::size_t error_pos = response.find("error");
+            if(error_pos != std::string::npos) return ERROR_RESPONSE;
+            // 75.3;1.82
+            std::size_t first_pos = response.find(";");
+            if(first_pos == std::string::npos) return STRANGE_PROGRAM_BEHAVIOR;
+            price = atof(response.substr(0, first_pos).c_str());
+            profit = atof(response.substr(first_pos + 1).c_str());
             return OK;
         }
 
@@ -761,6 +821,9 @@ namespace intrade_bar {
         int get_symbol_parameters(
                 const int symbol_index,
                 uint32_t &pricescale) {
+            /* пропускаем те валютные пары, которых нет у брокера */
+            if(!is_currency_pairs[symbol_index]) return DATA_NOT_AVAILABLE;
+
             std::string url("https://intrade.bar/symbols?symbol=FXCM:");
             url += extended_name_currency_pairs[symbol_index];
             const std::string body;
@@ -1030,6 +1093,70 @@ namespace intrade_bar {
             return OK;
         }
 
+        /** \brief Переключиться на реальный или демо аккаунт
+         * \param is_demo Демо счет, если true
+         * \param num_attempts Количество попыток покдлючения к серверу
+         * \param delay задержка между попытками подключения к серверу
+         * \return вернет код ошибки или 0 в случае успешного завершения
+         */
+        int switch_account(
+                const bool is_demo,
+                const int num_attempts = 5,
+                const int delay = 10) {
+            int err = OK;
+            for(int i = 0; i < num_attempts; ++i) {
+                if((err = request_profile()) == OK) break;
+                xtime::delay(delay);
+            }
+            if(err != OK) return err;
+            if(!is_demo && !is_demo_account) return OK;
+            if(is_demo && is_demo_account) return OK;
+            for(int i = 0; i < num_attempts; ++i) {
+                if((err = request_switch_account()) == OK) break;
+                xtime::delay(delay);
+            }
+            if(err != OK) return err;
+            /* еще раз узнаем профиль, чтобы обновить флаг is_demo_account */
+            for(int i = 0; i < num_attempts; ++i) {
+                if((err = request_profile()) == OK) break;
+                xtime::delay(delay);
+            }
+            if(err != OK) return err;
+            return OK;
+        }
+
+        /** \brief Переключиться на реальный или демо аккаунт
+         * \param is_rub Рубли, если true. Иначе USD
+         * \param num_attempts Количество попыток покдлючения к серверу
+         * \param delay задержка между попытками подключения к серверу
+         * \return вернет код ошибки или 0 в случае успешного завершения
+         */
+        int switch_account_currency(
+                const bool is_rub,
+                const int num_attempts = 5,
+                const int delay = 10) {
+            int err = OK;
+            for(int i = 0; i < num_attempts; ++i) {
+                if((err = request_profile()) == OK) break;
+                xtime::delay(delay);
+            }
+            if(err != OK) return err;
+            if(!is_rub && !is_rub_currency) return OK;
+            if(is_rub && is_rub_currency) return OK;
+            for(int i = 0; i < num_attempts; ++i) {
+                if((err = request_switch_currency()) == OK) break;
+                xtime::delay(delay);
+            }
+            if(err != OK) return err;
+            /* еще раз узнаем профиль, чтобы обновить флаг is_rub_currency */
+            for(int i = 0; i < num_attempts; ++i) {
+                if((err = request_profile()) == OK) break;
+                xtime::delay(delay);
+            }
+            if(err != OK) return err;
+            return OK;
+        }
+
         /** \brief Простое подключение к брокеру
          *
          * Данный метод отличается от обычного соединения тем,
@@ -1094,99 +1221,6 @@ namespace intrade_bar {
             return OK;
         }
 
-        IntradeBarApi() {
-            init_profile_state();
-            curl_global_init(CURL_GLOBAL_ALL);
-            init_http_headers_auth();
-            init_http_headers_switch();
-            init_http_headers_quotes_history();
-            init_http_headers_open_bo();
-        };
-
-        ~IntradeBarApi() {
-            deinit_all_http_headers();
-        }
-
-        /** \brief Установить пользовательсикй файл сертификата
-         * Можно установить только до запуска работы API!
-         * \param user_sert_file файл сертификата
-         */
-        void set_sert_file(const std::string user_sert_file) {
-            if(is_api_init) return;
-            sert_file = user_sert_file;
-        }
-
-        /** \brief Получить посленюю ошибку
-         */
-        std::string get_last_error() {
-            if(!is_api_init) return "";
-            return std::string(error_buffer);
-        }
-
-        /** \brief Переключиться на реальный или демо аккаунт
-         * \param is_demo Демо счет, если true
-         * \param num_attempts Количество попыток покдлючения к серверу
-         * \param delay задержка между попытками подключения к серверу
-         * \return вернет код ошибки или 0 в случае успешного завершения
-         */
-        int switch_account(
-                const bool is_demo,
-                const int num_attempts = 5,
-                const int delay = 10) {
-            int err = OK;
-            for(int i = 0; i < num_attempts; ++i) {
-                if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
-            }
-            if(err != OK) return err;
-            if(!is_demo && !is_demo_account) return OK;
-            if(is_demo && is_demo_account) return OK;
-            for(int i = 0; i < num_attempts; ++i) {
-                if((err = request_switch_account()) == OK) break;
-                xtime::delay(delay);
-            }
-            if(err != OK) return err;
-            /* еще раз узнаем профиль, чтобы обновить флаг is_demo_account */
-            for(int i = 0; i < num_attempts; ++i) {
-                if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
-            }
-            if(err != OK) return err;
-            return OK;
-        }
-
-        /** \brief Переключиться на реальный или демо аккаунт
-         * \param is_rub Рубли, если true. Иначе USD
-         * \param num_attempts Количество попыток покдлючения к серверу
-         * \param delay задержка между попытками подключения к серверу
-         * \return вернет код ошибки или 0 в случае успешного завершения
-         */
-        int switch_currency_account(
-                const bool is_rub,
-                const int num_attempts = 5,
-                const int delay = 10) {
-            int err = OK;
-            for(int i = 0; i < num_attempts; ++i) {
-                if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
-            }
-            if(err != OK) return err;
-            if(!is_rub && !is_rub_currency) return OK;
-            if(is_rub && is_rub_currency) return OK;
-            for(int i = 0; i < num_attempts; ++i) {
-                if((err = request_switch_currency()) == OK) break;
-                xtime::delay(delay);
-            }
-            if(err != OK) return err;
-            /* еще раз узнаем профиль, чтобы обновить флаг is_rub_currency */
-            for(int i = 0; i < num_attempts; ++i) {
-                if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
-            }
-            if(err != OK) return err;
-            return OK;
-        }
-
         /** \brief Подключиться к брокеру
          * \param email Адрес электронной почты
          * \param password Пароль от аккаунта
@@ -1199,13 +1233,11 @@ namespace intrade_bar {
                 const std::string &password,
                 const bool &is_demo_account,
                 const bool &is_rub_currency) {
-            int err = connect(email, password);
-            if(err != OK) return err;
-            err = switch_account(is_demo_account);
-            if(err != OK) return err;
-            return switch_currency_account(is_rub_currency);
+            int err = OK;
+            if((err = connect(email, password)) != OK) return err;
+            if((err = switch_account(is_demo_account)) != OK) return err;
+            return switch_account_currency(is_rub_currency);
         }
-
 
         /** \brief Подключиться к брокеру
          * \param j JSON структура настроек
@@ -1228,7 +1260,7 @@ namespace intrade_bar {
                     }
                     if(j.find("rub_currency") != j.end()) {
                         bool is_rub_currency = j["rub_currency"];
-                        err = switch_currency_account(is_rub_currency);
+                        err = switch_account_currency(is_rub_currency);
                         if(err != OK) return err;
                     }
                 }
@@ -1239,7 +1271,29 @@ namespace intrade_bar {
             }
         }
 
+        IntradeBarApi() {
+            init_profile_state();
+            curl_global_init(CURL_GLOBAL_ALL);
+            init_all_http_headers();
+        };
 
+        /** \brief Конструктор с подключением к брокеру
+         * \param j JSON структура настроек
+         * Ключ email, переменная типа string - адрес электронной почты
+         * Ключ password, переменная типа string - пароль от аккаунта
+         * Ключ demo_account, переменная типа bolean - настройки типа аккаунта, указать true если демо аккаунт
+         * Ключ rub_currency, переменная типа bolean - настройки валюты аккаунта, указать true если RUB, если USD то false
+         */
+        IntradeBarApi(json &j) {
+            init_profile_state();
+            curl_global_init(CURL_GLOBAL_ALL);
+            init_all_http_headers();
+            connect(j);
+        };
+
+        ~IntradeBarApi() {
+            deinit_all_http_headers();
+        }
     };
 }
 #endif // INTRADE-BAR_API_HPP_INCLUDED

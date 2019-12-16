@@ -29,6 +29,7 @@
 #include <iostream>
 #include <map>
 #include <array>
+#include <vector>
 #include <string>
 #include <cstring>
 #include <xtime.hpp>
@@ -59,6 +60,17 @@ namespace intrade_bar_common {
         FXCM_USE_HIST_QUOTES_ASK = 1,           /**< Использовать только цену ask в исторических данных */
         FXCM_USE_HIST_QUOTES_BID_ASK_DIV2 = 2,  /**< Использовать цену (bid + ask)/2 в исторических данных */
     };
+
+    static const std::array<bool, CURRENCY_PAIRS>
+            is_currency_pairs = {
+        true,true,false,true,
+        true,true,true,true,
+        true,true,true,true,
+        false,true,true,true,
+        true,true,true,true,
+        true,false,true,true,
+        false,true,
+    }; /**< Реально используемые валютные пары */
 
     static const std::array<std::string, CURRENCY_PAIRS> currency_pairs = {
         "EURUSD","USDJPY","GBPUSD","USDCHF",
@@ -104,6 +116,20 @@ namespace intrade_bar_common {
         {"GBPCHF",20},{"EURNZD",21},{"AUDCHF",22},{"GBPNZD",23},
         {"GBPCAD",24},{"XAUUSD",25}
     };  /**< Пары ключ-значение для имен символов и их порядкового номера */
+
+    /** \brief Получить индексы используемых валютных пар
+     *
+     * Данная функция вернет массив индексом валютных пар, которые есть на торговой площадке intrade.bar
+     * \return Вектор с индексами
+     */
+    static inline std::vector<uint32_t> get_index_used_currency_pairs() {
+        std::vector<uint32_t> temp;
+        for(uint32_t i = 0; i < CURRENCY_PAIRS; ++i) {
+            if(!is_currency_pairs[i]) continue;
+            temp.push_back(i);
+        }
+        return temp;
+    }
 
     static const std::array<uint32_t, CURRENCY_PAIRS>
         pricescale_currency_pairs = {

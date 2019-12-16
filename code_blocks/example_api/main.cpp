@@ -72,12 +72,21 @@ int main() {
     double delay = 0;
     uint64_t id_deal = 0;
     xtime::timestamp_t timestamp_open = 0;
-    int err_sprint = iApi.open_bo_sprint(10, 1,intrade_bar::SELL, 60*3, delay, id_deal, timestamp_open);
-    std::cout << "open_sprint_binary_option: " << err_sprint << std::endl;
+    int err_sprint = iApi.open_bo_sprint(10, 50, intrade_bar::SELL, 60*3, delay, id_deal, timestamp_open);
+    std::cout << "open_bo_sprint: " << err_sprint << std::endl;
     std::cout << "delay: " << delay << std::endl;
     std::cout << "id_deal: " << id_deal << std::endl;
     std::cout << "timestamp_open: " << timestamp_open << std::endl;
 
+    if(err_sprint == intrade_bar::OK)
+    while(true) {
+        double price = 0, profit = 0;
+        int err_check = iApi.check_bo(id_deal, price, profit);
+        std::cout << "check_bo: " << err_check << std::endl;
+        std::cout << "price: " << price << std::endl;
+        std::cout << "profit: " << profit << std::endl;
+        xtime::delay(1);
+    }
     while(true) {
         std::this_thread::yield();
     }

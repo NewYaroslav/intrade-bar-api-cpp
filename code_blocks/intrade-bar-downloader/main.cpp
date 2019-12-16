@@ -24,26 +24,41 @@
 #include <iostream>
 #include "intrade-bar-api.hpp"
 #include "xquotes_history.hpp"
+#include <csignal>
 
-#define PROGRAM_VERSION "1.2"
-#define PROGRAM_DATE    "09.12.2019"
+#define PROGRAM_VERSION "1.3"
+#define PROGRAM_DATE    "16.12.2019"
 
 #define DO_NOT_USE 0
 
 using namespace std;
 
+void signal_handler_abnormal(int signal) {
+    std::cout << "abnormal termination condition, as is e.g. initiated by std::abort(), code: " << signal << '\n';
+    std::cout << "Delete the quotes store and download it again!" << std::endl;
+}
+
+void signal_handler_erroneous_arithmetic_operation(int signal) {
+    std::cout << "erroneous arithmetic operation such as divide by zero, code: " << signal << '\n';
+    std::cout << "Delete the quotes store and download it again!" << std::endl;
+}
+
+void signal_handler_invalid_memory_access(int signal) {
+    std::cout << "invalid memory access (segmentation fault), code: " << signal << '\n';
+    std::cout << "Delete the quotes store and download it again!" << std::endl;
+}
+
 int main(int argc, char **argv) {
     std::cout << "intrade bar downloader " << PROGRAM_VERSION << std::endl;
+    std::signal(SIGABRT, signal_handler_abnormal);
+    std::signal(SIGFPE, signal_handler_erroneous_arithmetic_operation);
+    std::signal(SIGSEGV, signal_handler_invalid_memory_access);
 
     bool is_use_day_off = true;     // флаг использования выходных дней
     bool is_use_current_day = true; // флаг  загрузки текущего дня
     uint32_t price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2;
 
     /* Загружаем параметры с коротким ключем */
-#if(DO_NOT_USE)
-    std::string email = std::string(intrade_bar_common::get_argument(argc, argv, "e"));
-    std::string password = std::string(intrade_bar_common::get_argument(argc, argv, "p"));
-#endif
     std::string path_json_file = std::string(intrade_bar_common::get_argument(argc, argv, "pjf"));
     std::string path_store = std::string(intrade_bar_common::get_argument(argc, argv, "ps"));
     std::string str_day_off = std::string(intrade_bar_common::get_argument(argc, argv, "sdo"));
@@ -51,10 +66,6 @@ int main(int argc, char **argv) {
     std::string str_price_type = std::string(intrade_bar_common::get_argument(argc, argv, "pt"));
 
     /* Загружаем параметры с длинным ключем (если с коротким не были загружены) */
-#if(DO_NOT_USE)
-    if(email.empty()) email =  std::string(intrade_bar_common::get_argument(argc, argv, "email"));
-    if(password.empty()) password =  std::string(intrade_bar_common::get_argument(argc, argv, "password"));
-#endif
     if(path_json_file.empty()) path_json_file =  std::string(intrade_bar_common::get_argument(argc, argv, "path_json_file"));
     if(path_store.empty()) path_store = std::string(intrade_bar_common::get_argument(argc, argv, "path_store"));
     if(str_price_type.empty()) str_price_type = std::string(intrade_bar_common::get_argument(argc, argv, "price_type"));
@@ -84,12 +95,6 @@ int main(int argc, char **argv) {
             auth_file >> auth_json;
             auth_file.close();
             /* устаналиваем параметры */
-#if(DO_NOT_USE)
-            if(auth_json["email"] != nullptr)
-                email = auth_json["email"];
-            if(auth_json["password"] != nullptr)
-                password = auth_json["password"];
-#endif
             if(auth_json["path_store"] != nullptr)
                 path_store = auth_json["path_store"];
             if(auth_json["use_current_day"] != nullptr) {
@@ -124,30 +129,12 @@ int main(int argc, char **argv) {
     }
 
     /* проверяем настройки */
-#if(DO_NOT_USE)
-    if(email.empty()) {
-        std::cout << "parameter error: email" << std::endl;
-        return intrade_bar_common::INVALID_ARGUMENT;
-    }
-    if(password.empty()) {
-        std::cout << "parameter error: password" << std::endl;
-        return intrade_bar_common::INVALID_ARGUMENT;
-    }
-#endif
     if(path_store.empty()) {
         std::cout << "parameter error: path_store" << std::endl;
         return intrade_bar_common::INVALID_ARGUMENT;
     }
 
     intrade_bar::IntradeBarApi iApi;
-#if(DO_NOT_USE)
-    /* подключаемся к брокеру */
-    int err_connect = iApi.simple_connection(email, password);
-    if(err_connect != 0) {
-        std::cout << "authorisation error!" << std::endl;
-        return intrade_bar_common::AUTHORIZATION_ERROR;
-    }
-#endif
 
     /* выводим параметры загрузки истории */
     std::cout << "download options:" << std::endl;
@@ -184,27 +171,34 @@ int main(int argc, char **argv) {
     bf::create_directory(path_store);
 
     /* создаем хранилища котировок */
-    std::vector<std::shared_ptr<xquotes_history::QuotesHistory<>>> hists;
+    std::vector<std::shared_ptr<xquotes_history::QuotesHistory<>>> hists(intrade_bar_common::CURRENCY_PAIRS);
     for(uint32_t symbol = 0;
         symbol < intrade_bar_common::CURRENCY_PAIRS;
         ++symbol) {
+        /* пропускаем те валютные пары, которых нет у брокера */
+        if(!intrade_bar_common::is_currency_pairs[symbol]) continue;
+
         std::string file_name =
             path_store + "/" +
             intrade_bar_common::currency_pairs[symbol] + ".qhs5";
-        hists.push_back(
-            std::make_shared<xquotes_history::QuotesHistory<>>(
+
+        hists[symbol] = std::make_shared<xquotes_history::QuotesHistory<>>(
             file_name,
             xquotes_history::PRICE_OHLCV,
-            xquotes_history::USE_COMPRESSION));
+            xquotes_history::USE_COMPRESSION);
     }
-
 
     /* загружаем множители для символов(валютных пар) */
     std::vector<uint32_t> pricescale(intrade_bar_common::CURRENCY_PAIRS, 0);
     const uint32_t MAX_NUM_ATTEMPTS = 10;
+
     for(uint32_t symbol = 0;
         symbol < intrade_bar_common::CURRENCY_PAIRS;
         ++symbol) {
+
+        /* пропускаем те валютные пары, которых нет у брокера */
+        if(!intrade_bar_common::is_currency_pairs[symbol]) continue;
+
         for(uint32_t attempt = 0; attempt < MAX_NUM_ATTEMPTS; ++attempt) {
             int err = iApi.get_symbol_parameters(symbol, pricescale[symbol]);
             if(err != intrade_bar_common::OK) {
@@ -229,12 +223,20 @@ int main(int argc, char **argv) {
         } // for attempt
     } // for symbol
 
+    std::cout << std::endl;
+
     /* скачиваем исторические данные котировок */
     for(uint32_t symbol = 0;
         symbol < intrade_bar_common::CURRENCY_PAIRS;
         ++symbol) {
+        /* пропускаем те валютные пары, которых нет у брокера */
+        if(!intrade_bar_common::is_currency_pairs[symbol]) continue;
+
+        /* получаем время */
+        int err = xquotes_common::OK;
         xtime::timestamp_t min_timestamp = 0, max_timestamp = 0;
-        int err = hists[symbol]->get_min_max_day_timestamp(min_timestamp, max_timestamp);
+        err = hists[symbol]->get_min_max_day_timestamp(min_timestamp, max_timestamp);
+
         if(err != xquotes_common::OK) {
             std::cout << "search for the starting date symbol: "
                 << intrade_bar_common::currency_pairs[symbol]
