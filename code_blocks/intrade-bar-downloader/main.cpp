@@ -27,7 +27,7 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.4"
+#define PROGRAM_VERSION "1.5"
 #define PROGRAM_DATE    "17.01.2020"
 
 #define DO_NOT_USE 0
@@ -35,18 +35,21 @@
 using namespace std;
 
 void signal_handler_abnormal(int signal) {
-    std::cout << "abnormal termination condition, as is e.g. initiated by std::abort(), code: " << signal << '\n';
-    std::cout << "Delete the quotes store and download it again!" << std::endl;
+    std::cerr << "abnormal termination condition, as is e.g. initiated by std::abort(), code: " << signal << '\n';
+    std::cerr << "Delete the quotes store and download it again!" << std::endl;
+    exit(EXIT_FAILURE);
 }
 
 void signal_handler_erroneous_arithmetic_operation(int signal) {
-    std::cout << "erroneous arithmetic operation such as divide by zero, code: " << signal << '\n';
-    std::cout << "Delete the quotes store and download it again!" << std::endl;
+    std::cerr << "erroneous arithmetic operation such as divide by zero, code: " << signal << '\n';
+    std::cerr << "Delete the quotes store and download it again!" << std::endl;
+    exit(EXIT_FAILURE);
 }
 
 void signal_handler_invalid_memory_access(int signal) {
-    std::cout << "invalid memory access (segmentation fault), code: " << signal << '\n';
-    std::cout << "Delete the quotes store and download it again!" << std::endl;
+    std::cerr << "invalid memory access (segmentation fault), code: " << signal << '\n';
+    std::cerr << "Delete the quotes store and download it again!" << std::endl;
+    exit(EXIT_FAILURE);
 }
 
 /* обработать все аргументы */
