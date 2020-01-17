@@ -4,6 +4,19 @@
 using namespace std;
 
 int main() {
+    for(size_t i = 0; i < 10; ++i) {
+        intrade_bar::QuotationsStream iQuotationsStream;
+        if(iQuotationsStream.wait()) {
+            std::cout << "intrade-bar: opened connection" << std::endl;
+        } else {
+            std::cout << "intrade-bar: error connection!" << std::endl;
+            std::cout << iQuotationsStream.get_error_message() << std::endl;
+            return 0;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::cout << "reconnect " << i << std::endl;
+    }
+
     intrade_bar::QuotationsStream iQuotationsStream;
     if(iQuotationsStream.wait()) {
         std::cout << "intrade-bar: opened connection" << std::endl;

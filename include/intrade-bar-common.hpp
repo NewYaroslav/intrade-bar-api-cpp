@@ -211,6 +211,23 @@ namespace intrade_bar_common {
 		std::cout << message << "\r";
 		message_size = message.size();
 	}
+
+    /** \brief Класс бинарного опциона
+     */
+	class BinaryOption {
+	public:
+        std::string symbol_name;    /**< Имя символа (валютной пары) */
+        int32_t contract_type = 0;  /**< Тип контракта (BUY/SELL) */
+        uint32_t duration = 0;      /**< Экспирация */
+        double delay = 0;           /**< Задержка на отправление сделки */
+        double amount = 0;          /**< Размер выплаты */
+        uint64_t id = 0;            /**< ID сделки */
+        xtime::timestamp_t open_timestamp = 0;  /**< Метка времени открытия опциона */
+        double price = 0;           /**< Цена закрытия опциона */
+        double profit = 0;          /**< Профит опциона (если опцион убыточен, 0) */
+
+        BinaryOption() {};
+	};
 };
 
 #endif // INTRADE_BAR_COMMON_HPP_INCLUDED

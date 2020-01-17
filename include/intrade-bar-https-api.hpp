@@ -21,8 +21,8 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef INTRADE_BAR_API_HPP_INCLUDED
-#define INTRADE_BAR_API_HPP_INCLUDED
+#ifndef INTRADE_BAR_HTTPS_API_HPP_INCLUDED
+#define INTRADE_BAR_HTTPS_API_HPP_INCLUDED
 
 #include <intrade-bar-common.hpp>
 #include <curl/curl.h>
@@ -94,7 +94,7 @@ namespace intrade_bar {
 
     /** \brief Класс API брокера Intrade.bar
      */
-    class IntradeBarApi {
+    class IntradeBarHttpApi {
     public:
 
         /// Варнианты кодирования
@@ -821,9 +821,6 @@ namespace intrade_bar {
         int get_symbol_parameters(
                 const int symbol_index,
                 uint32_t &pricescale) {
-            /* пропускаем те валютные пары, которых нет у брокера */
-            if(!is_currency_pairs[symbol_index]) return DATA_NOT_AVAILABLE;
-
             std::string url("https://intrade.bar/symbols?symbol=FXCM:");
             url += extended_name_currency_pairs[symbol_index];
             const std::string body;
@@ -1271,7 +1268,12 @@ namespace intrade_bar {
             }
         }
 
-        IntradeBarApi() {
+
+        IntradeBarHttpApi(
+                const std::string &user_sert_file = "curl-ca-bundle.crt",
+                const std::string &user_cookie_file = "intrade-bar.cookie") {
+            sert_file = user_sert_file;
+            cookie_file = user_cookie_file;
             init_profile_state();
             curl_global_init(CURL_GLOBAL_ALL);
             init_all_http_headers();
@@ -1284,16 +1286,29 @@ namespace intrade_bar {
          * Ключ demo_account, переменная типа bolean - настройки типа аккаунта, указать true если демо аккаунт
          * Ключ rub_currency, переменная типа bolean - настройки валюты аккаунта, указать true если RUB, если USD то false
          */
-        IntradeBarApi(json &j) {
+        IntradeBarHttpApi(json &j) {
+            try {
+                if(j["sert_file"] != nullptr) {
+                    sert_file = j["sert_file"];
+                }
+                if(j["cookie_file"] != nullptr) {
+                    cookie_file = j["cookie_file"];
+                }
+            }
+            catch(...) {
+                std::cerr
+                    << "json error: key <sert_file> or <cookie_file>"
+                    << std::endl;
+            }
             init_profile_state();
             curl_global_init(CURL_GLOBAL_ALL);
             init_all_http_headers();
             connect(j);
         };
 
-        ~IntradeBarApi() {
+        ~IntradeBarHttpApi() {
             deinit_all_http_headers();
         }
     };
 }
-#endif // INTRADE-BAR_API_HPP_INCLUDED
+#endif // INTRADE_BAR_HTTPS_API_HPP_INCLUDED

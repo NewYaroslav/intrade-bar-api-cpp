@@ -12,7 +12,7 @@
 #include <nlohmann/json.hpp>
 #include <xtime.hpp>
 
-#include "intrade-bar-api.hpp"
+#include "intrade-bar-https-api.hpp"
 #include "intrade-bar-websocket-api.hpp"
 
 /** \brief Посчитать среднее значение
@@ -63,7 +63,7 @@ T1 calc_std_dev_sample(const T2 &array_data) {
 int main() {
     std::cout << "start intrade.bar api test!" << std::endl;
 
-    intrade_bar::IntradeBarApi iApi;
+    intrade_bar::IntradeBarHttpApi iApi;
 
     std::ifstream auth_file("auth.json");
     if(!auth_file) return -1;
@@ -98,7 +98,7 @@ int main() {
     std::uniform_int_distribution<> rnd_currency_pairs(0, currency_pairs_index.size() - 1);
     std::uniform_int_distribution<> rnd_delay(1000, 30000);
 
-    std::ofstream file("deals.txt");
+    std::ofstream file("deals_minute_58.txt");
     file << std::left << std::setfill(' ') << std::setw(20) << "currency-pair-name";
     file << std::left << std::setfill(' ') << std::setw(10) << "direction";
     file << std::left << std::setfill(' ') << std::setw(10) << "status";
@@ -110,7 +110,7 @@ int main() {
     file << " ";
     file << std::endl;
 
-    /* длем 10 секунд */
+    /* ждлем 10 секунд */
     xtime::delay(10);
 
     std::vector<double> diff_timestamp;
@@ -129,10 +129,26 @@ int main() {
         double diff = 0;
 
         uint32_t last_second = xtime::get_second_day(iQuotationsStream.get_server_timestamp() + 0.5);
+        uint32_t last_minute_day = xtime::get_minute_day(iQuotationsStream.get_server_timestamp() + 0.5);
+#if(0)
         /* ждем начала секунды */
         while(true) {
             server_timestamp = iQuotationsStream.get_server_timestamp();
             if(xtime::get_second_day(server_timestamp) > last_second) {
+                break;
+            }
+        }
+#endif
+        /* ждем начала минуты */
+        while(true) {
+            server_timestamp = iQuotationsStream.get_server_timestamp();
+            if(xtime::get_second_minute(server_timestamp) == 57) {
+                break;
+            }
+        }
+        while(true) {
+            server_timestamp = iQuotationsStream.get_server_timestamp();
+            if(xtime::get_second_minute(server_timestamp) == 58) {
                 break;
             }
         }
@@ -196,9 +212,11 @@ int main() {
         file << std::left << std::setfill(' ') << std::setw(20) << std::setprecision(3) << std::fixed << open_sprint_delay << " ";
         file << std::endl;
 
-        if(deals_counter >= 1000) break;
+        if(deals_counter >= 120) break;
+#if(0)
         /* вызываем случайную задержку */
         xtime::delay_ms(rnd_delay(gen));
+#endif
     }
     /* выведем статистику */
     file << "mean: " << calc_mean_value<double>(diff_timestamp);

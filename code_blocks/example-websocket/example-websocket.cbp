@@ -25,6 +25,7 @@
 					<Add directory="../../lib/xtime_cpp/src" />
 					<Add directory="../../lib/boost_1_71_0/include/boost-1_71" />
 					<Add directory="../../lib/xquotes_history/include" />
+					<Add directory="../../lib/utf8_v2_3_4/source" />
 					<Add directory="../../include" />
 				</Compiler>
 				<Linker>
@@ -44,6 +45,7 @@
 					<Add directory="../../lib/json/include" />
 					<Add directory="../../lib/xtime_cpp/src" />
 					<Add directory="../../lib/xquotes_history/include" />
+					<Add directory="../../lib/utf8_v2_3_4/source" />
 					<Add directory="../../include" />
 				</Linker>
 			</Target>
@@ -52,8 +54,8 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="../../include/intrade-bar-api.hpp" />
 		<Unit filename="../../include/intrade-bar-common.hpp" />
+		<Unit filename="../../include/intrade-bar-logger.hpp" />
 		<Unit filename="../../include/intrade-bar-websocket-api.hpp" />
 		<Unit filename="../../lib/Simple-WebSocket-Server/client_ws.hpp" />
 		<Unit filename="../../lib/Simple-WebSocket-Server/client_wss.hpp" />
