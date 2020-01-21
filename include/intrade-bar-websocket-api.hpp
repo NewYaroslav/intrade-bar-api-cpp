@@ -34,7 +34,6 @@
 #include <xquotes_common.hpp>
 #include <mutex>
 #include <atomic>
-//#include <codecvt>
 #include "utf8.h" // http://utfcpp.sourceforge.net/
 
 namespace intrade_bar {
@@ -473,6 +472,13 @@ namespace intrade_bar {
             return xtime::get_ftimestamp() + offset_timestamp;
         }
 
+        /** \brief Получить смещение метки времени ПК
+         * \return Смещение метки времени ПК
+         */
+        inline xtime::ftimestamp_t get_offset_timestamp() {
+            return offset_timestamp;
+        }
+
         /** \brief Получить цену тика символа
          *
          * \param symbol_index Индекс символа
@@ -499,6 +505,12 @@ namespace intrade_bar {
             if(offset >= array_candles_size)
                 return xquotes_common::Candle();
             return array_candles[symbol_index][array_candles_size - offset - 1];
+        }
+
+        int init_array_candles(
+                const size_t symbol_index,
+                const std::vector<xquotes_common::Candle> &candles) {
+
         }
 
         /** \brief Проверить наличие ошибки

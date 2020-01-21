@@ -32,6 +32,11 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <iomanip>
+#include <mutex>
+#include <sstream>
+#include <thread>
+#include <cstring>
 #include <xtime.hpp>
 
 namespace intrade_bar_common {
@@ -195,6 +200,19 @@ namespace intrade_bar_common {
         }
         return "";
     }
+
+    class PrintThread: public std::ostringstream {
+    private:
+        static inline std::mutex _mutexPrint;
+
+    public:
+        PrintThread() = default;
+
+        ~PrintThread() {
+            std::lock_guard<std::mutex> guard(_mutexPrint);
+            std::cout << this->str();
+        }
+    };
 
     /** \brief Напечатать линию
      * \param message Сообщение
