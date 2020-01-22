@@ -293,9 +293,9 @@ namespace intrade_bar {
          * Данный метод нужен для внутреннего использования
          */
         std::size_t get_string_fragment(
-                const std::string str,
-                const std::string div_beg,
-                const std::string div_end,
+                const std::string &str,
+                const std::string &div_beg,
+                const std::string &div_end,
                 std::string &out,
                 std::size_t start_pos = 0) {
             std::size_t beg_pos = str.find(div_beg, start_pos);
@@ -312,8 +312,8 @@ namespace intrade_bar {
          * Данная метод нужен для внутреннего использования
          */
         std::size_t get_string_fragment(
-                const std::string str,
-                const std::string div_beg,
+                const std::string &str,
+                const std::string &div_beg,
                 std::string &out) {
             std::size_t beg_pos = str.find(div_beg, 0);
             if(beg_pos != std::string::npos) {
@@ -1364,6 +1364,34 @@ namespace intrade_bar {
             }
             if(err != OK) return err;
             return OK;
+        }
+
+        /** \brief Проверить наличие пользователя по партнерской программе
+         * \param user_id Пользователь, который возможно зареган по партнерке
+         * \return Код ошибки, 0 если пользователь есть
+         */
+        int check_partner_user_id(
+                const std::string &user_id) {
+            std::string url("https://intrade.bar/partner/user?sort=rub_down&limit=25&page=1&user_id=");
+            url += user_id;
+            const std::string body;
+            std::string response;
+            int err = get_request(
+                url,
+                body,
+                http_headers_quotes,
+                response,
+                false,
+                30);
+            if(err != OK) return err;
+            std::string div_beg("<div>");
+            div_beg += user_id;
+            div_beg += "</div>";
+            std::size_t beg_pos = response.find(div_beg, 0);
+            if(beg_pos != std::string::npos) {
+                return OK;
+            }
+            return DATA_NOT_AVAILABLE;
         }
 
         /** \brief Простое подключение к брокеру
