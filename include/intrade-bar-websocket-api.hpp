@@ -115,7 +115,7 @@ namespace intrade_bar {
             const xtime::timestamp_t minute_timestamp =
                 xtime::get_first_timestamp_minute(
                     (xtime::timestamp_t)timestamp);
-            std::lock_guard<std::mutex> _candles_mutex(candles_mutex);
+            std::lock_guard<std::mutex> lock(candles_mutex);
             /* проверяем, пуст ли массив */
             if(array_candles[symbol_index].size() == 0 ||
                     array_candles[symbol_index].back().timestamp <
@@ -241,7 +241,7 @@ namespace intrade_bar {
                     }
                     catch(...) {
                         /* ничего не делаем */
-                        std::lock_guard<std::mutex> _mutex(error_message_mutex);
+                        std::lock_guard<std::mutex> lock(error_message_mutex);
                         try {
                             std::string utf8line = response;
                             fix_utf8_string(utf8line);
@@ -266,6 +266,7 @@ namespace intrade_bar {
 
         /** \brief Конструктор класс для получения потока котировок
          * \param sert_file Файл-сертификат. По умолчанию используется от curl: curl-ca-bundle.crt
+         * \param file_websocket_log Файл для записи логов.
          */
         QuotationsStream(
                 std::string sert_file = "curl-ca-bundle.crt",
@@ -499,7 +500,7 @@ namespace intrade_bar {
                 const size_t offset = 0) {
             if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init)
                 return xquotes_common::Candle();
-            std::lock_guard<std::mutex> _candles_mutex(candles_mutex);
+            std::lock_guard<std::mutex> lock(candles_mutex);
             const size_t array_candles_size =
                 array_candles[symbol_index].size();
             if(offset >= array_candles_size)
@@ -507,10 +508,100 @@ namespace intrade_bar {
             return array_candles[symbol_index][array_candles_size - offset - 1];
         }
 
+        /** \brief Получить количество баров
+         * \param symbol_index Индекс символа
+         */
+        inline uint32_t get_num_candles(const size_t symbol_index) {
+            if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init) return 0;
+            std::lock_guard<std::mutex> lock(candles_mutex);
+            return array_candles[symbol_index].size();
+        }
+
+        /** \brief Получить бар по метке времени
+         *
+         * \param symbol_index Индекс символа
+         * \return Цена (bid+ask)/2
+         */
+        inline xquotes_common::Candle get_timestamp_candle(
+                const size_t symbol_index,
+                const xtime::timestamp_t timestamp) {
+            if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init)
+                return xquotes_common::Candle();
+            const xtime::timestamp_t first_timestamp =
+                xtime::get_first_timestamp_minute(timestamp);
+            std::lock_guard<std::mutex> lock(candles_mutex);
+            const size_t array_candles_size =
+                array_candles[symbol_index].size();
+            if(array_candles_size == 0) return xquotes_common::Candle();
+            size_t index = array_candles_size - 1;
+            while(true) {
+                if(array_candles[symbol_index][index].timestamp == first_timestamp) {
+                    return array_candles[symbol_index][index];
+                }
+                if(index > 0) --index;
+                else break;
+            }
+            return xquotes_common::Candle();
+        }
+
+        /** \brief Инициализировать массив японских свечей
+         *
+         * \param symbol_index Индекс символа
+         * \param candles Массив баров
+         * \return Код ошибки, вернет 0 если все в порядке
+         */
         int init_array_candles(
                 const size_t symbol_index,
                 const std::vector<xquotes_common::Candle> &candles) {
+            if(symbol_index >= intrade_bar_common::CURRENCY_PAIRS)
+                return intrade_bar_common::INVALID_ARGUMENT;
+            if(candles.size() == 0) return intrade_bar_common::INVALID_ARGUMENT;
+            const xtime::timestamp_t start_date = candles.front().timestamp;
+            const xtime::timestamp_t stop_date = candles.back().timestamp;
+            if(start_date > stop_date) return intrade_bar_common::INVALID_ARGUMENT;
+            /* необходимо взять массив баров и дополнить его новыми данными */
+            std::lock_guard<std::mutex> lock(candles_mutex);
+            if(array_candles[symbol_index].size() == 0) {
+                array_candles[symbol_index] = candles;
+                return intrade_bar_common::OK;
+            }
+            const xtime::timestamp_t data_start_date = array_candles[symbol_index].front().timestamp;
+            const xtime::timestamp_t data_stop_date = array_candles[symbol_index].back().timestamp;
+            if(data_start_date > data_stop_date) return intrade_bar_common::INVALID_ARGUMENT;
+            const xtime::timestamp_t timestamp_min = std::min(data_start_date, start_date);
+            const xtime::timestamp_t timestamp_max = std::max(data_stop_date, stop_date);
+            std::vector<xquotes_common::Candle> new_array_candles(1 + (timestamp_max - timestamp_min) / xtime::SECONDS_IN_MINUTE);
+            for(size_t i = 0; i < new_array_candles.size(); ++i) {
+                new_array_candles[i].timestamp = i * xtime::SECONDS_IN_MINUTE + timestamp_min;
+            }
+            for(size_t i = 0; i < array_candles[symbol_index].size(); ++i) {
+                uint32_t index = (array_candles[symbol_index][i].timestamp - timestamp_min) / xtime::SECONDS_IN_MINUTE;
+                new_array_candles[index] = array_candles[symbol_index][i];
+            }
+            for(size_t i = 0; i < candles.size(); ++i) {
+                uint32_t index = (candles[i].timestamp - timestamp_min) / xtime::SECONDS_IN_MINUTE;
+                new_array_candles[index] = candles[i];
+            }
 
+            array_candles[symbol_index] = new_array_candles;
+            return intrade_bar_common::OK;
+        }
+
+        /** \brief Ждать закрытие бара (минутного)
+         * \param f Лямбда-функция, которую можно использовать как callbacks
+         */
+        inline void wait_candle_close(std::function<void(
+                const xtime::ftimestamp_t &timestamp,
+                const xtime::ftimestamp_t &timestamp_stop)> f = nullptr) {
+            const xtime::ftimestamp_t timestamp_stop =
+                xtime::get_first_timestamp_minute(get_server_timestamp()) +
+                xtime::SECONDS_IN_MINUTE;
+            while(true) {
+                const xtime::ftimestamp_t t = get_server_timestamp();
+                if(t >= timestamp_stop) break;
+                if(f != nullptr) f(t, timestamp_stop);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
         }
 
         /** \brief Проверить наличие ошибки

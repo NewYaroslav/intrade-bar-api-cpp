@@ -9,6 +9,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <csignal>
 #include <dir.h>
 #include <nlohmann/json.hpp>
 #include <xtime.hpp>
@@ -96,7 +97,6 @@ namespace intrade_bar {
                     xtime::ftimestamp_t ftimestamp; // Метка времени сообщения
                     while(true) {
                         std::this_thread::yield();
-                        //if(is_stop) break;
                         if(!file) break;
                         {
                             std::lock_guard<std::mutex> lock(queue_mutex);

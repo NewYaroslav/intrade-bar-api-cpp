@@ -141,6 +141,7 @@ namespace intrade_bar {
         struct curl_slist *http_headers_quotes = nullptr;  /**< Заголовки HTTP для загрузки исторических данных */
         struct curl_slist *http_headers_quotes_history = nullptr;  /**< Заголовки HTTP для загрузки исторических данных */
         struct curl_slist *http_headers_open_bo = nullptr; /**< Заголовки HTTP для открытия бинарного опциона */
+
         /** \brief Инициализировать заголовки для авторизации
          * Данный метод нужен для внутреннего использования
          */
@@ -850,7 +851,7 @@ namespace intrade_bar {
                 const double amount,
                 const int contract_type,
                 const uint32_t duration) {
-            if(bets_counter >= MAX_NUM_BET) {
+            if(bets_counter >= (int)MAX_NUM_BET) {
                 json j_bet;
                 j_bet["error"] = "error opening binary option: exceeded the number of simultaneous bets!";
                 j_bet["code"] = BETTING_QUEUE_IS_FULL;
@@ -1060,7 +1061,7 @@ namespace intrade_bar {
          * \return date_stop Дата окончания
          */
         int get_historical_data(
-                const int symbol_index,
+                const uint32_t symbol_index,
                 const xtime::timestamp_t date_start,
                 const xtime::timestamp_t date_stop,
                 std::vector<xquotes_common::Candle> &candles,
@@ -1516,7 +1517,11 @@ namespace intrade_bar {
 
         IntradeBarHttpApi(
                 const std::string &user_sert_file = "curl-ca-bundle.crt",
-                const std::string &user_cookie_file = "intrade-bar.cookie") {
+                const std::string &user_cookie_file = "intrade-bar.cookie",
+                const std::string &user_file_name_bets_log = "logger/intrade-bar-bets.log",
+                const std::string &user_file_name_work_log = "logger/intrade-bar-https-work.log") {
+            file_name_bets_log = user_file_name_bets_log;
+            file_name_work_log = user_file_name_work_log;
             /* логируем */
             json j_work;
             j_work["method"] =  "IntradeBarHttpApi";
@@ -1537,17 +1542,18 @@ namespace intrade_bar {
          * Ключ rub_currency, переменная типа bolean - настройки валюты аккаунта, указать true если RUB, если USD то false
          */
         IntradeBarHttpApi(json &j) {
-            /* логируем */
-            json j_work;
-            j_work["method"] =  "IntradeBarHttpApi";
-            intrade_bar::Logger::log(file_name_work_log, j_work);
-
             try {
                 if(j["sert_file"] != nullptr) {
                     sert_file = j["sert_file"];
                 }
                 if(j["cookie_file"] != nullptr) {
                     cookie_file = j["cookie_file"];
+                }
+                if(j["bets_log_file"] != nullptr) {
+                    file_name_bets_log = j["bets_log_file"];
+                }
+                if(j["work_log_file"] != nullptr) {
+                    file_name_work_log = j["work_log_file"];
                 }
             }
             catch(...) {
@@ -1560,6 +1566,11 @@ namespace intrade_bar {
                 j_work["method"] =  "IntradeBarHttpApi";
                 intrade_bar::Logger::log(file_name_work_log, j_work);
             }
+            /* логируем */
+            json j_work;
+            j_work["method"] =  "IntradeBarHttpApi";
+            intrade_bar::Logger::log(file_name_work_log, j_work);
+
             init_profile_state();
             curl_global_init(CURL_GLOBAL_ALL);
             init_all_http_headers();

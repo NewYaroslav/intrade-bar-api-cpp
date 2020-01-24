@@ -4,6 +4,7 @@
 using namespace std;
 
 int main() {
+    /* проверяем открытие и закрытие соединения, когда объект уничтожается */
     for(size_t i = 0; i < 10; ++i) {
         intrade_bar::QuotationsStream iQuotationsStream;
         if(iQuotationsStream.wait()) {
@@ -17,6 +18,7 @@ int main() {
         std::cout << "reconnect " << i << std::endl;
     }
 
+    /* создаем новое соединение */
     intrade_bar::QuotationsStream iQuotationsStream;
     if(iQuotationsStream.wait()) {
         std::cout << "intrade-bar: opened connection" << std::endl;
@@ -26,6 +28,7 @@ int main() {
         return 0;
     }
 
+    /* отображаем котировку, время ПК и время сервера где-то с минуту, потом выходим */
     xtime::ftimestamp_t start_timestamp = iQuotationsStream.get_server_timestamp();
     while(true) {
         std::cout
@@ -40,6 +43,7 @@ int main() {
             (start_timestamp + xtime::SECONDS_IN_MINUTE)) break;
     }
 
+    /* отображаем актуальный бар */
     while(true) {
         xquotes_common::Candle candle = iQuotationsStream.get_candle(0);
         std::cout

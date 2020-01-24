@@ -27,7 +27,7 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.5"
+#define PROGRAM_VERSION "1.6"
 #define PROGRAM_DATE    "17.01.2020"
 
 #define DO_NOT_USE 0
@@ -96,6 +96,8 @@ int main(int argc, char **argv) {
     std::string environmental_variable;
     std::string sert_file("curl-ca-bundle.crt");
     std::string cookie_file("intrade-bar.cookie");
+    std::string file_name_bets_log("logger/intrade-bar-bets.log");
+    std::string file_name_work_log("logger/intrade-bar-https-work.log");
 
     if(!process_arguments(
             argc,
@@ -154,6 +156,13 @@ int main(int argc, char **argv) {
             std::ifstream auth_file(json_file);
             auth_file >> auth_json;
             auth_file.close();
+            //
+            if(auth_json["bets_log_file"] != nullptr) {
+                file_name_bets_log = auth_json["bets_log_file"];
+            }
+            if(auth_json["work_log_file"] != nullptr) {
+                file_name_work_log = auth_json["work_log_file"];
+            }
             //
             if(auth_json["path_store"] != nullptr)
                 path_store = auth_json["path_store"];
@@ -225,7 +234,11 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    intrade_bar::IntradeBarHttpApi iApi(sert_file, cookie_file);
+    intrade_bar::IntradeBarHttpApi iApi(
+        sert_file,
+        cookie_file,
+        file_name_bets_log,
+        file_name_work_log);
 
     /* выводим параметры загрузки истории */
     std::cout << "download options:" << std::endl;
@@ -280,6 +293,8 @@ int main(int argc, char **argv) {
             xquotes_history::USE_COMPRESSION);
     }
 
+// отключаем загрузку множителя для валютных пар
+#if(0)
     /* загружаем множители для символов(валютных пар) */
     std::vector<uint32_t> pricescale(intrade_bar_common::CURRENCY_PAIRS, 0);
     const uint32_t MAX_NUM_ATTEMPTS = 10;
@@ -322,7 +337,7 @@ int main(int argc, char **argv) {
             }
         } // for attempt
     } // for symbol
-
+#endif
     std::cout << std::endl;
 
     /* скачиваем исторические данные котировок */
@@ -390,7 +405,7 @@ int main(int argc, char **argv) {
                 t + xtime::SECONDS_IN_DAY - xtime::SECONDS_IN_MINUTE,
                 candles,
                 price_type,
-                pricescale[symbol]);
+                intrade_bar_common::pricescale_currency_pairs[symbol]);
             if(err != intrade_bar_common::OK) {
                 intrade_bar::print_line(
                     "error receiving data " +
