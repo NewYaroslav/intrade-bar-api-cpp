@@ -28,7 +28,7 @@
 #include <csignal>
 
 #define PROGRAM_VERSION "1.6"
-#define PROGRAM_DATE    "17.01.2020"
+#define PROGRAM_DATE    "24.01.2020"
 
 #define DO_NOT_USE 0
 
