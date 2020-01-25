@@ -33,6 +33,8 @@ namespace intrade_bar {
 
     class IntradeBarApi {
     public:
+        using Bet = IntradeBarHttpApi::Bet;
+
         /// Типы События
         enum class EventType {
             NEW_TICK,                   /**< Получен новый тик */
@@ -134,16 +136,16 @@ namespace intrade_bar {
                 websocket_api(user_sert_file, user_websocket_log_file) {
 
             /* инициализация флагов и прочих переменных */
-            //is_websocket_api_error = false;
             is_stop_command = false;
             is_stop = false;
-            //is_init_hist_data = false;
-
+#if(0)
             /* ожидаем завершения подключения к потоку котировок */
             if(!websocket_api.wait()) {
                 /* ошибка потока котировок */
+                std::cerr << "websocket error" << std::endl;
                 return;
             }
+#endif
 
             /* ожидание инициализации первого минутного бара */
             if(is_wait_formation_new_bar) {
@@ -271,6 +273,179 @@ namespace intrade_bar {
         inline const static bool check_candle(xquotes_common::Candle &candle) {
             if(candle.close == 0 || candle.timestamp == 0) return false;
             return true;
+        }
+
+        /** \brief Получить баланс счета
+         * \return Баланс аккаунта
+         */
+        inline double get_balance() {
+            return http_api.get_balance();
+        }
+
+        /** \brief Обновить состояние баланса
+         *
+         * \param is_async Флаг асинхронной обработки запроса
+         * \return Вернет код ошибки
+         */
+        int update_balance(const bool is_async = true) {
+            if(!is_async) {
+                return http_api.request_balance();
+            }
+            std::thread balance_thread = std::thread([&]{
+                for(size_t n = 0; n < 10; ++n) {
+                    if(is_stop_command) break;
+                    int err = http_api.request_balance();
+                    if(err == OK) break;
+                    std::this_thread::yield();
+                    xtime::delay(1);
+                }
+            });
+            balance_thread.detach();
+            return OK;
+        }
+
+        /** \brief Открыть бинарный опцион
+         *
+         * Данный метод открывает бинарный опцион типа Спринт
+         * \param symbol Символ
+         * \param amount Размер ставки
+         * \param contract_type Тип контракта (BUY или SELL)
+         * \param duration Длительность экспирации опциона
+         * \param callback Функция для обратного вызова
+         * \return Код ошибки
+         */
+        int open_bo(
+                const std::string &symbol,
+                const double amount,
+                const int contract_type,
+                const uint32_t duration,
+                std::function<void(
+                    const IntradeBarHttpApi::Bet &bet)> callback = nullptr) {
+            std::string note;
+            uint32_t api_bet_id = 0;
+            return http_api.async_open_bo_sprint(
+                symbol,
+                note,
+                amount,
+                contract_type,
+                duration,
+                api_bet_id,
+                callback);
+        }
+
+        /** \brief Открыть бинарный опцион
+         *
+         * Данный метод открывает бинарный опцион типа Спринт
+         * \param symbol Символ
+         * \param amount Размер ставки
+         * \param contract_type Тип контракта (BUY или SELL)
+         * \param duration Длительность экспирации опциона
+         * \param callback Функция для обратного вызова
+         * \return Код ошибки
+         */
+        int open_bo(
+                const std::string &symbol,
+                const std::string &note,
+                const double amount,
+                const int contract_type,
+                const uint32_t duration,
+                uint32_t &api_bet_id,
+                std::function<void(
+                    const IntradeBarHttpApi::Bet &bet)> callback = nullptr) {
+            return http_api.async_open_bo_sprint(
+                symbol,
+                note,
+                amount,
+                contract_type,
+                duration,
+                api_bet_id,
+                callback);
+        }
+
+        /** \brief Подключиться к брокеру
+         * \param email Адрес электронной почты
+         * \param password Пароль от аккаунта
+         * \param is_demo_account Настройки типа аккаунта, указать true если демо аккаунт
+         * \param is_rub_currency Настройки валюты аккаунта, указать true если RUB, если USD то false
+         * \return вернет код ошибки или 0 в случае успешного завершения
+         */
+        int connect(
+                const std::string &email,
+                const std::string &password,
+                const bool &is_demo_account,
+                const bool &is_rub_currency) {
+            return http_api.connect(email, password, is_demo_account, is_rub_currency);
+        }
+
+        /** \brief Подключиться к брокеру
+         * \param j JSON структура настроек
+         * Ключ email, переменная типа string - адрес электронной почты
+         * Ключ password, переменная типа string - пароль от аккаунта
+         * Ключ demo_account, переменная типа bolean - настройки типа аккаунта, указать true если демо аккаунт
+         * Ключ rub_currency, переменная типа bolean - настройки валюты аккаунта, указать true если RUB, если USD то false
+         * \return вернет код ошибки или 0 в случае успешного завершения
+         */
+        int connect(json &j) {
+            return http_api.connect(j);
+        }
+
+        /** \brief Получить user id
+         * \return Вернет строку с user id
+         */
+        inline std::string get_user_id() {
+            return http_api.get_user_id();
+        }
+
+        /** \brief Получить user hash
+         * \return Вернет строку с user hash
+         */
+        inline std::string get_user_hash() {
+            return http_api.get_user_hash();
+        }
+
+        /** \brief Проверить, является ли аккаунт Demo
+         * \return Вернет true если demo аккаунт
+         */
+        inline bool demo_account() {
+            return http_api.demo_account();
+        }
+
+        /** \brief Проверить валюту счета аккаунта
+         * \return Вернет true если аккаунт использует счет RUB
+         */
+        inline bool account_rub_currency() {
+            return http_api.account_rub_currency();
+        }
+
+        /** \brief Установить демо счет или реальный
+         * \param is_demo Демо счет, если true
+         * \return Код ошибки или 0 в случае успешного завершения
+         */
+        int set_demo_account(const bool is_demo) {
+            return http_api.switch_account(is_demo);
+        }
+
+        /** \brief Установить рублевый счет или долларовый
+         * \param is_rub Рубли, если true. Иначе USD
+         * \return Код ошибки или 0 в случае успешного завершения
+         */
+        int set_rub_account_currency(const bool is_rub) {
+            return http_api.switch_account_currency(is_rub);
+        }
+
+        /** \brief Получтить ставку
+         * \param bet Класс ставки, сюда будут загружены все параметры ставки
+         * \param api_bet_id Уникальный номер ставки, который возвращает метод async_open_bo_sprint
+         * \return Код ошибки или 0 в случае успеха
+         */
+        int get_bet(Bet &bet, const uint32_t api_bet_id) {
+            return http_api.get_bet(bet, api_bet_id);
+        }
+
+        /** \brief Очистить массив сделок
+         */
+        void clear_bets_array() {
+            http_api.clear_bets_array();
         }
     };
 }

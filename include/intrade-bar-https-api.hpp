@@ -26,6 +26,7 @@
 
 #include <intrade-bar-common.hpp>
 #include <intrade-bar-logger.hpp>
+#include <xquotes_common.hpp>
 #include <curl/curl.h>
 #include <xtime.hpp>
 #include <gzip/decompress.hpp>
@@ -35,69 +36,16 @@
 #include <atomic>
 #include <array>
 #include <map>
-#include <xquotes_common.hpp>
-
-#ifdef INTRADE_BAR_STACK_TRACE
-#include "backward.hpp"
-#endif
+#include "utf8.h" // http://utfcpp.sourceforge.net/
 
 namespace intrade_bar {
     using json = nlohmann::json;
     using namespace intrade_bar_common;
 
-    /** \brief Класс для хранения ставки
-     */
-    class Bet {
-    public:
-        int id = 0;                             /**< Уникальный ID ставки */
-        int symbol_ind = 0;                     /**< Номер символа, на котором была совершена сделка */
-        int contract_type = 0;                  /**< Тип контракта BUY или SELL */
-        int duration = 0;                       /**< Длительность контракта в секундах */
-        xtime::timestamp_t timestamp = 0;       /**< Метка времени начала контракта */
-        xtime::timestamp_t timestamp_end = 0;   /**< Метка времени конца контракта */
-        double amount = 0;                      /**< Размер ставки в RUB или USD */
-        bool is_demo_account = false;           /**< Флаг демо аккаунта */
-        bool is_rub_currency = false;           /**< Флаг рублевого счета */
-
-        Bet() {};
-
-        /** \brief Инициализировать ставку
-         * \param id Уникальный номер ставки
-         * \param symbol_ind Номер валютной пары
-         * \param contract_type Тип контракта (BUY или SELL)
-         * \param duration Длительность опциона в секундах
-         * \param timestamp Метка времени начала опицона
-         * \param timestamp_end Метка времени конца опциона
-         * \param amount Размер опциона
-         * \param is_demo_account Флаг демо аккаунта
-         * \param is_rub_currency Флаг рублевого счета
-         */
-        Bet(    int id,
-                int symbol_ind,
-                int contract_type,
-                int duration,
-                xtime::timestamp_t timestamp,
-                xtime::timestamp_t timestamp_end,
-                double amount,
-                bool is_demo_account,
-                bool is_rub_currency) {
-            Bet::id = id;
-            Bet::symbol_ind = symbol_ind;
-            Bet::contract_type = contract_type;
-            Bet::duration = duration;
-            Bet::timestamp = timestamp;
-            Bet::timestamp_end = timestamp_end;
-            Bet::amount = amount;
-            Bet::is_demo_account = is_demo_account;
-            Bet::is_rub_currency = is_rub_currency;
-        };
-    };
-
     /** \brief Класс API брокера Intrade.bar
      */
     class IntradeBarHttpApi {
     public:
-
         /// Варнианты кодирования
         enum {
             USE_CONTENT_ENCODING_GZIP = 1,          ///< Сжатие GZIP
@@ -105,11 +53,41 @@ namespace intrade_bar {
             USE_CONTENT_ENCODING_NOT_SUPPORED = 3,  ///< Без кодирования
         };
 
+        enum class BetStatus {
+            UNKNOWN_STATE,
+            OPENING_ERROR,
+            WAITING_COMPLETION,
+            WIN,
+            LOSS,
+        };
+
+        /** \brief Класс для хранения информации по сделке
+         */
+        class Bet {
+        public:
+            uint64_t api_bet_id = 0;
+            uint64_t broker_bet_id = 0;
+            std::string symbol_name;
+            int contract_type = 0;                      /**< Тип контракта BUY или SELL */
+            uint32_t duration = 0;                      /**< Длительность контракта в секундах */
+            xtime::timestamp_t opening_timestamp = 0;   /**< Метка времени начала контракта */
+            xtime::timestamp_t closing_timestamp = 0;   /**< Метка времени конца контракта */
+            double amount = 0;                          /**< Размер ставки в RUB или USD */
+            bool is_demo_account = false;               /**< Флаг демо аккаунта */
+            bool is_rub_currency = false;               /**< Флаг рублевого счета */
+            BetStatus bet_status = BetStatus::UNKNOWN_STATE;
+
+            Bet() {};
+        };
+
     private:
         std::thread dynamic_update_account_thread;  /**< Поток для обновления состояния аккаунта */
-        //std::vector<Bet> array_bets;    /**< Массив ставок */
-        //std::mutex array_bets_mutex;    /**< Мьютекс для ограничения доступа к массиву ставок */
-        std::atomic<int> bets_counter = ATOMIC_VAR_INIT(0);
+        std::atomic<int> bets_counter = ATOMIC_VAR_INIT(0); /**< Счетчик одновременно открытых сделок */
+
+        std::mutex bets_id_counter_mutex;
+        uint64_t bets_id_counter = 0;   /**< Счетчик номера сделок, открытых через API */
+        std::mutex array_bets_mutex;    /**< Мьютекс для блокировки array_bets */
+        std::vector<Bet> array_bets;
 
         std::string sert_file = "curl-ca-bundle.crt";   /**< Файл сертификата */
         std::string cookie_file = "intrade-bar.cookie"; /**< Файл cookie */
@@ -572,6 +550,13 @@ namespace intrade_bar {
             return OK;
         }
 
+        void fix_utf8_string(std::string& str) {
+            std::string temp;
+            utf8::replace_invalid(str.begin(), str.end(), back_inserter(temp));
+            str = temp;
+        }
+
+    public:
         /** \brief Получить профиль пользователя
          * \return вернет код ошибки или 0 в случае успешного завершения
          */
@@ -621,6 +606,8 @@ namespace intrade_bar {
             }
             return OK;
         }
+
+    private:
 
         /** \brief Переключиться между типами аккаунта (Демо или реальный счет)
          * Каждый вызов данной функции вызывает переключение аккаунта на противоположный тип
@@ -845,12 +832,25 @@ namespace intrade_bar {
             return OK;
         }
 
-        int async_open_bo(
+        /** \brief Открыть асинхронно сделку типа Спринт
+         *
+         * \param symbol Символ
+         * \param note Заметка
+         * \param amount Размер ставки
+         * \param contract_type Тип контракта (BUY или SELL)
+         * \param duration Длительность экспирации опциона
+         * \param api_bet_id Уникальный номер сделки внутри API
+         * \param callback Функция для обратного вызова
+         * \return Код ошибки
+         */
+        int async_open_bo_sprint(
                 const std::string &symbol,
                 const std::string &note,
                 const double amount,
                 const int contract_type,
-                const uint32_t duration) {
+                const uint32_t duration,
+                uint32_t &api_bet_id,
+                std::function<void(const Bet &bet)> callback = nullptr) {
             if(bets_counter >= (int)MAX_NUM_BET) {
                 json j_bet;
                 j_bet["error"] = "error opening binary option: exceeded the number of simultaneous bets!";
@@ -877,6 +877,7 @@ namespace intrade_bar {
             }
             const uint32_t symbol_index = it->second;
             if(!is_currency_pairs[symbol_index]) {
+
                 json j_bet;
                 j_bet["error"] = "error opening binary option: broker does not support the specified currency pair!";
                 j_bet["code"] = INVALID_ARGUMENT;
@@ -885,12 +886,53 @@ namespace intrade_bar {
                 j_bet["amount"] = amount;
                 j_bet["duration"] = duration;
                 intrade_bar::Logger::log(file_name_bets_log, j_bet);
+
                 return INVALID_ARGUMENT;
             }
-            std::thread bo_thread = std::thread([&,symbol,
+
+            /* добавляем сделку в массив сделок */
+            {
+                std::lock_guard<std::mutex> lock(bets_id_counter_mutex);
+                api_bet_id = bets_id_counter++;
+            }
+
+            Bet new_bet;
+            new_bet.amount = amount;
+            new_bet.api_bet_id = api_bet_id;
+            new_bet.bet_status = BetStatus::UNKNOWN_STATE;
+            new_bet.contract_type = contract_type;
+            new_bet.duration = duration;
+            new_bet.is_demo_account = is_demo_account;
+            new_bet.is_rub_currency = is_rub_currency;
+            new_bet.symbol_name = symbol;
+
+            {
+                std::lock_guard<std::mutex> lock(array_bets_mutex);
+                array_bets.push_back(new_bet);
+                /* сортирнем список сделок */
+                if(!std::is_sorted(array_bets.begin(), array_bets.end(),
+                        []( const Bet &a,
+                            const Bet &b) {
+                            return a.api_bet_id < b.api_bet_id;
+                        })) {
+                    std::sort(array_bets.begin(), array_bets.end(),
+                        []( const Bet &a,
+                            const Bet &b) {
+                        return a.api_bet_id < b.api_bet_id;
+                    });;
+                }
+            }
+
+            /* запускаем асинхронное открытие сделки */
+            std::thread bo_thread = std::thread([&,
+                    symbol,
                     note,amount,
                     contract_type,
-                    duration,symbol_index] {
+                    duration,
+                    symbol_index,
+                    api_bet_id,
+                    new_bet,
+                    callback] {
                 xtime::timestamp_t open_timestamp = 0;
                 double delay = 0;
                 uint64_t id_deal = 0;
@@ -902,8 +944,9 @@ namespace intrade_bar {
                     delay,
                     id_deal,
                     open_timestamp);
+
+                /* логируем ошибку открытия сделки */
                 if(err_sprint != OK) {
-                    /* логируем ошибку открытия сделки */
                     json j_bet;
                     j_bet["error"] = "error opening binary option";
                     j_bet["code"] = err_sprint;
@@ -914,9 +957,56 @@ namespace intrade_bar {
                     j_bet["duration"] = duration;
                     j_bet["balance"] = get_balance();
                     intrade_bar::Logger::log(file_name_bets_log, j_bet);
+
+                    /* обновляем состояние сделки в массиве сделок */
+                    {
+                        std::lock_guard<std::mutex> lock(array_bets_mutex);
+                        for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
+                            if(array_bets[i].api_bet_id == api_bet_id) {
+                                array_bets[i].opening_timestamp = open_timestamp;
+                                array_bets[i].closing_timestamp = open_timestamp + duration;
+                                array_bets[i].broker_bet_id = id_deal;
+                                array_bets[i].bet_status = BetStatus::OPENING_ERROR;
+                                break;
+                            }
+                        }
+                    }
+
+                    /* вызываем callback */
+                    Bet new_bet;
+                    new_bet.amount = amount;
+                    new_bet.api_bet_id = api_bet_id;
+                    new_bet.bet_status = BetStatus::OPENING_ERROR;
+                    new_bet.contract_type = contract_type;
+                    new_bet.duration = duration;
+                    new_bet.is_demo_account = is_demo_account;
+                    new_bet.is_rub_currency = is_rub_currency;
+                    new_bet.symbol_name = symbol;
+                    new_bet.opening_timestamp = open_timestamp;
+                    new_bet.closing_timestamp = open_timestamp + duration;
+                    new_bet.broker_bet_id = id_deal;
+                    if(callback != nullptr) callback(new_bet);
                     return;
                 }
+
+                /* увеличиваем счетчик */
                 bets_counter += 1;
+
+                /* обновляем состояние сделки в массиве сделок */
+                {
+                    std::lock_guard<std::mutex> lock(array_bets_mutex);
+                    for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
+                        if(array_bets[i].api_bet_id == api_bet_id) {
+                            array_bets[i].opening_timestamp = open_timestamp;
+                            array_bets[i].closing_timestamp = open_timestamp + duration;
+                            array_bets[i].broker_bet_id = id_deal;
+                            array_bets[i].bet_status = BetStatus::WAITING_COMPLETION;
+                            break;
+                        }
+                    }
+                }
+
+
                 const xtime::timestamp_t stop_timestamp = open_timestamp + duration;
                 /* узнаем баланс */
                 int err_balance = request_balance();
@@ -960,13 +1050,43 @@ namespace intrade_bar {
                             int err = check_bo(id_deal, price, profit);
                             if(err == OK) break;
                             /* ждем секунду в случае неудачной попытки */
+                            std::this_thread::yield();
                             xtime::delay(1);
                         }
 
+                        /* уменьшаем счетчик бинарных опционов */
                         bets_counter -= 1;
 
+                        /* вызываем callback */
+                        Bet new_bet;
+                        new_bet.amount = amount;
+                        new_bet.api_bet_id = api_bet_id;
+                        if(profit > 0) new_bet.bet_status = BetStatus::WIN;
+                        else new_bet.bet_status = BetStatus::LOSS;
+                        new_bet.contract_type = contract_type;
+                        new_bet.duration = duration;
+                        new_bet.is_demo_account = is_demo_account;
+                        new_bet.is_rub_currency = is_rub_currency;
+                        new_bet.symbol_name = symbol;
+                        new_bet.opening_timestamp = open_timestamp;
+                        new_bet.closing_timestamp = open_timestamp + duration;
+                        new_bet.broker_bet_id = id_deal;
+                        if(callback != nullptr) callback(new_bet);
+
+                        /* обновляем состояние сделки в массиве сделок */
+                        {
+                            std::lock_guard<std::mutex> lock(array_bets_mutex);
+                            for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
+                                if(array_bets[i].api_bet_id == api_bet_id) {
+                                    if(profit > 0) array_bets[i].bet_status = BetStatus::WIN;
+                                    else array_bets[i].bet_status = BetStatus::LOSS;
+                                    break;
+                                }
+                            }
+                        }
+
+                        /* логируем ошибку, если невозможно узнать результат опциона */
                         if(err != OK) {
-                            /* логируем ошибку, если невозможно узнать результат опциона */
                             json j_work;
                             j_work["error"] = "binary option validation request error";
                             j_work["code"] = err;
@@ -979,6 +1099,10 @@ namespace intrade_bar {
                             intrade_bar::Logger::log(file_name_work_log, j_work);
                             break;
                         }
+
+                        /* добавляем сделку в список сделок */
+                        std::mutex array_bets_mutex;
+                        std::vector<std::pair<uint32_t,Bet>> array_bets;
 
                         /* логируем закрытие сделки */
                         json j_bet;
@@ -1024,6 +1148,35 @@ namespace intrade_bar {
             });
             bo_thread.detach();
             return OK;
+        }
+
+        /** \brief Получтить ставку
+         * \param bet Класс ставки, сюда будут загружены все параметры ставки
+         * \param api_bet_id Уникальный номер ставки, который возвращает метод async_open_bo_sprint
+         * \return Код ошибки или 0 в случае успеха
+         */
+        int get_bet(Bet &bet, const uint32_t api_bet_id) {
+            {
+                std::lock_guard<std::mutex> lock(array_bets_mutex);
+                for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
+                    if(array_bets[i].api_bet_id == api_bet_id) {
+                        bet = array_bets[i];
+                        return OK;
+                    }
+                }
+            }
+            return DATA_NOT_AVAILABLE;
+        }
+
+        /** \brief Очистить массив сделок
+         */
+        void clear_bets_array() {
+            {
+                std::lock_guard<std::mutex> lock(bets_id_counter_mutex);
+                std::lock_guard<std::mutex> lock2(array_bets_mutex);
+                array_bets.clear();
+                bets_id_counter = 0;
+            }
         }
 
         /** \brief Получить параметры торговли
@@ -1311,23 +1464,23 @@ namespace intrade_bar {
          */
         int switch_account(
                 const bool is_demo,
-                const int num_attempts = 5,
-                const int delay = 10) {
+                const uint32_t num_attempts = 5,
+                const uint32_t delay = 10) {
             int err = OK;
-            for(int i = 0; i < num_attempts; ++i) {
+            for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
                 xtime::delay(delay);
             }
             if(err != OK) return err;
             if(!is_demo && !is_demo_account) return OK;
             if(is_demo && is_demo_account) return OK;
-            for(int i = 0; i < num_attempts; ++i) {
+            for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_switch_account()) == OK) break;
                 xtime::delay(delay);
             }
             if(err != OK) return err;
             /* еще раз узнаем профиль, чтобы обновить флаг is_demo_account */
-            for(int i = 0; i < num_attempts; ++i) {
+            for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
                 xtime::delay(delay);
             }
@@ -1343,23 +1496,23 @@ namespace intrade_bar {
          */
         int switch_account_currency(
                 const bool is_rub,
-                const int num_attempts = 5,
-                const int delay = 10) {
+                const uint32_t num_attempts = 5,
+                const uint32_t delay = 10) {
             int err = OK;
-            for(int i = 0; i < num_attempts; ++i) {
+            for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
                 xtime::delay(delay);
             }
             if(err != OK) return err;
             if(!is_rub && !is_rub_currency) return OK;
             if(is_rub && is_rub_currency) return OK;
-            for(int i = 0; i < num_attempts; ++i) {
+            for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_switch_currency()) == OK) break;
                 xtime::delay(delay);
             }
             if(err != OK) return err;
             /* еще раз узнаем профиль, чтобы обновить флаг is_rub_currency */
-            for(int i = 0; i < num_attempts; ++i) {
+            for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
                 xtime::delay(delay);
             }
@@ -1440,7 +1593,21 @@ namespace intrade_bar {
             const std::string body_login = "email=" + email + "&password=" + password + "&action=";
             std::string response_login;
             int err = post_request(url_login, body_login, http_headers_auth, response_login, true);
-            if(err != OK) return err;
+            if(err != OK) {
+                /* записываем лог *********************************************/
+                json j_work;
+                j_work["method"] = "int connect("
+                    "const std::string &email,"
+                    "const std::string &password)";
+                j_work["error"] = "post_request";
+                j_work["error_code"] = err;
+                std::string utf8line = response_login;
+                fix_utf8_string(utf8line);
+                j_work["response"] = utf8line;
+                intrade_bar::Logger::log(file_name_work_log, j_work);
+                /* ********************************************************** */
+                return err;
+            }
             const std::string str_auth("intrade.bar/auth/");
             std::string fragment_url;
             if(!get_string_fragment(response_login, str_auth, "'", fragment_url)) return AUTHORIZATION_ERROR;
@@ -1456,6 +1623,16 @@ namespace intrade_bar {
             if((err = request_profile()) != OK) return err;
             if((err = request_balance()) != OK) return err;
             is_api_init = true; // ставим флаг готовности к работе
+
+            /* записываем лог *************************************************/
+            json j_work;
+            j_work["method"] =  "int connect("
+                "const std::string &email,"
+                "const std::string &password)";
+            j_work["action"] = "open_connection";
+            j_work["status_code"] = OK;
+            intrade_bar::Logger::log(file_name_work_log, j_work);
+            /* ************************************************************** */
             return OK;
         }
 
@@ -1505,16 +1682,23 @@ namespace intrade_bar {
                 return err;
             }
             catch(...) {
-                /* логируем ошибку */
+                /* записываем лог *********************************************/
                 json j_work;
                 j_work["error"] = "connect error: json parser error";
                 j_work["code"] = JSON_PARSER_ERROR;
                 j_work["method"] =  "int connect(json &j)";
                 intrade_bar::Logger::log(file_name_work_log, j_work);
+                /* ********************************************************** */
                 return JSON_PARSER_ERROR;
             }
         }
 
+        /** \brief Конструктор с указанием всех файлов без авторизации
+         * \param user_sert_file Файл-сертификат
+         * \param user_cookie_file Файл для записи cookie
+         * \param user_bets_log_file Файл для записи логов работы со сделками
+         * \param user_work_log_file Файл для записи логов работы http клиента
+         */
         IntradeBarHttpApi(
                 const std::string &user_sert_file = "curl-ca-bundle.crt",
                 const std::string &user_cookie_file = "intrade-bar.cookie",
@@ -1534,7 +1718,7 @@ namespace intrade_bar {
             init_all_http_headers();
         };
 
-        /** \brief Конструктор с подключением к брокеру
+        /** \brief Конструктор с авторизацией
          * \param j JSON структура настроек
          * Ключ email, переменная типа string - адрес электронной почты
          * Ключ password, переменная типа string - пароль от аккаунта
@@ -1560,17 +1744,18 @@ namespace intrade_bar {
                 std::cerr
                     << "json error: key <sert_file> or <cookie_file>"
                     << std::endl;
-                /* логируем ошибку */
+                /* записываем лог *********************************************/
                 json j_work;
                 j_work["error"] = "json error: key <sert_file> or <cookie_file>";
                 j_work["method"] =  "IntradeBarHttpApi";
                 intrade_bar::Logger::log(file_name_work_log, j_work);
+                /* ********************************************************** */
             }
-            /* логируем */
+            /* записываем лог *************************************************/
             json j_work;
             j_work["method"] =  "IntradeBarHttpApi";
             intrade_bar::Logger::log(file_name_work_log, j_work);
-
+            /* ************************************************************** */
             init_profile_state();
             curl_global_init(CURL_GLOBAL_ALL);
             init_all_http_headers();
@@ -1578,10 +1763,11 @@ namespace intrade_bar {
         };
 
         ~IntradeBarHttpApi() {
-            /* логируем */
+            /* записываем лог *************************************************/
             json j_work;
             j_work["method"] =  "~IntradeBarHttpApi()";
             intrade_bar::Logger::log(file_name_work_log, j_work);
+            /* ************************************************************** */
             deinit_all_http_headers();
         }
     };
