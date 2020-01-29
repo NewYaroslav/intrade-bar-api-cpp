@@ -31,30 +31,32 @@ int main() {
                     const intrade_bar::IntradeBarApi::EventType event,
                     const xtime::timestamp_t timestamp) {
         /* получаем бар по валютной паре GBPCAD из candles */
-        xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("GBPCAD", candles);
+        xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("GBPAUD", candles);
         /* получено событие ПОЛУЧЕНЫ ИСТОРИЧЕСКИЕ ДАННЫЕ */
         if(event == intrade_bar::IntradeBarApi::EventType::HISTORICAL_DATA_RECEIVED) {
             std::cout << "history bar: " << xtime::get_str_date_time(timestamp) << std::endl;
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
-                    << "GBPCAD close: " << candle.close
+                    << "GBPAUD close: " << candle.close
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
             } else {
-                std::cout << "GBPCAD error" << std::endl;
+                std::cout << "GBPAUD error" << std::endl;
             }
+            std::cout << std::endl;
         } else
         /* получено событие НОВЫЙ ТИК */
         if(event == intrade_bar::IntradeBarApi::EventType::NEW_TICK) {
             std::cout << "new tick: " << xtime::get_str_date_time(timestamp) << std::endl;
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
-                    << "GBPCAD close: " << candle.close
+                    << "GBPAUD close: " << candle.close
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
             } else {
-                std::cout << "GBPCAD error" << std::endl;
+                std::cout << "GBPAUD error" << std::endl;
             }
+            std::cout << std::endl;
         }
     });
 

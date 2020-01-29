@@ -175,7 +175,7 @@ namespace intrade_bar {
                             (double)pricescale_currency_pairs[it->second]);
                         /* обновляем данные */
                         update_candles(it->second, price, tick_time);
-                        std::lock_guard<std::mutex> _price_mutex(price_mutex);
+                        std::lock_guard<std::mutex> lock(price_mutex);
                         array_tick_price[it->second].first = price;
                         array_tick_price[it->second].second = tick_time;
                     }
@@ -534,6 +534,17 @@ namespace intrade_bar {
                 array_candles[symbol_index].size();
             if(array_candles_size == 0) return xquotes_common::Candle();
             size_t index = array_candles_size - 1;
+            /* особый случай, бар еще не успел сформироваться */
+            if(array_candles[symbol_index].back().timestamp ==
+                first_timestamp - xtime::SECONDS_IN_MINUTE) {
+                double price = 0;
+                {
+                    std::lock_guard<std::mutex> lock(price_mutex);
+                    price = array_tick_price[symbol_index].first;
+                }
+                return xquotes_common::Candle(price, price, price, price,
+                    0, first_timestamp);
+            }
             while(true) {
                 if(array_candles[symbol_index][index].timestamp == first_timestamp) {
                     return array_candles[symbol_index][index];

@@ -162,7 +162,7 @@ namespace intrade_bar {
                     std::this_thread::yield();
                 });
             }
-            std::cout << "start of historical data initialization" << std::endl;
+            //std::cout << "start of historical data initialization" << std::endl;
 
             /* создаем поток обработки событий */
             std::thread stream_thread = std::thread([&,number_bars, callback] {
@@ -174,7 +174,7 @@ namespace intrade_bar {
                     const xtime::timestamp_t init_date_timestamp =
                         xtime::get_first_timestamp_minute(websocket_api.get_server_timestamp()) -
                         xtime::SECONDS_IN_MINUTE;
-                    std::cout << "download_historical_data" << std::endl;
+                    //std::cout << "download_historical_data" << std::endl;
                     std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
                     download_historical_data(array_candles, init_date_timestamp, hist_data_number_bars);
 
@@ -193,7 +193,7 @@ namespace intrade_bar {
                     hist_data_number_bars = (end_date_timestamp - init_date_timestamp) / xtime::SECONDS_IN_MINUTE;
                 }
 
-                std::cout << "start" << std::endl;
+                //std::cout << "start" << std::endl;
 
                 /* далее занимаемся получением новызх тиков */
                 xtime::timestamp_t last_timestamp = (xtime::timestamp_t)(websocket_api.get_server_timestamp() + 0.5);
@@ -235,7 +235,7 @@ namespace intrade_bar {
                     const xtime::timestamp_t download_date_timestamp =
                         xtime::get_first_timestamp_minute(timestamp) -
                         xtime::SECONDS_IN_MINUTE;
-                    std::cout << "download_historical_data: " << xtime::get_str_date_time(download_date_timestamp) << std::endl;
+                    //std::cout << "download_historical_data: " << xtime::get_str_date_time(download_date_timestamp) << std::endl;
                     std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
                     download_historical_data(array_candles, download_date_timestamp, 1);
                     if(callback != nullptr) callback(array_candles[0], EventType::HISTORICAL_DATA_RECEIVED, download_date_timestamp);
