@@ -191,6 +191,7 @@ namespace intrade_bar {
                         xtime::SECONDS_IN_MINUTE;
                     if(end_date_timestamp == init_date_timestamp) break;
                     hist_data_number_bars = (end_date_timestamp - init_date_timestamp) / xtime::SECONDS_IN_MINUTE;
+					std::this_thread::yield();
                 }
 
                 //std::cout << "start" << std::endl;
@@ -203,6 +204,7 @@ namespace intrade_bar {
                     xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
                     if(timestamp <= last_timestamp) {
                         std::this_thread::yield();
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
                         continue;
                     }
                     /* начало новой секунды,
@@ -227,6 +229,7 @@ namespace intrade_bar {
                     uint64_t server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
                     if(server_minute <= last_minute) {
                         std::this_thread::yield();
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
                         continue;
                     }
                     last_minute = server_minute;
@@ -239,6 +242,8 @@ namespace intrade_bar {
                     std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
                     download_historical_data(array_candles, download_date_timestamp, 1);
                     if(callback != nullptr) callback(array_candles[0], EventType::HISTORICAL_DATA_RECEIVED, download_date_timestamp);
+					std::this_thread::yield();
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
                 is_stop = true;
             });
@@ -249,6 +254,7 @@ namespace intrade_bar {
             is_stop_command = true;
             while(!is_stop) {
                 std::this_thread::yield();
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
 
@@ -297,7 +303,7 @@ namespace intrade_bar {
                     int err = http_api.request_balance();
                     if(err == OK) break;
                     std::this_thread::yield();
-                    xtime::delay(1);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 }
             });
             balance_thread.detach();

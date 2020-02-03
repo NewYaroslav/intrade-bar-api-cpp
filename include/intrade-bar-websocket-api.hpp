@@ -426,7 +426,8 @@ namespace intrade_bar {
                         }
                         break;
                     }
-                    const uint64_t RECONNECT_DELAY = 1000;
+					std::this_thread::yield();
+					const uint64_t RECONNECT_DELAY = 1000;
 					std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
                 } // while
                 is_close = true;
@@ -442,6 +443,7 @@ namespace intrade_bar {
             }
             while(!is_close) {
                 std::this_thread::yield();
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         };
 
@@ -459,6 +461,7 @@ namespace intrade_bar {
          */
         inline bool wait() {
             while(!is_error && !is_websocket_init) {
+				std::this_thread::yield();
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
             return is_websocket_init;
@@ -611,6 +614,7 @@ namespace intrade_bar {
                 const xtime::ftimestamp_t t = get_server_timestamp();
                 if(t >= timestamp_stop) break;
                 if(f != nullptr) f(t, timestamp_stop);
+				std::this_thread::yield();
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         }

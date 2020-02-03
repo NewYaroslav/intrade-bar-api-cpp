@@ -1051,7 +1051,7 @@ namespace intrade_bar {
                             if(err == OK) break;
                             /* ждем секунду в случае неудачной попытки */
                             std::this_thread::yield();
-                            xtime::delay(1);
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                         }
 
                         /* уменьшаем счетчик бинарных опционов */
@@ -1144,6 +1144,7 @@ namespace intrade_bar {
                         break;
                     }
                     std::this_thread::yield();
+					std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
             });
             bo_thread.detach();
