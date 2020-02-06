@@ -55,6 +55,7 @@
 		</Compiler>
 		<Unit filename="../../include/intrade-bar-api.hpp" />
 		<Unit filename="../../include/intrade-bar-common.hpp" />
+		<Unit filename="../../include/intrade-bar-websocket-api.hpp" />
 		<Unit filename="../../lib/backward-cpp/backward.hpp" />
 		<Unit filename="../../lib/xtime_cpp/src/xtime.cpp" />
 		<Unit filename="../../lib/xtime_cpp/src/xtime.hpp" />

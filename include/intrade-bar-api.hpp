@@ -453,6 +453,21 @@ namespace intrade_bar {
         void clear_bets_array() {
             http_api.clear_bets_array();
         }
+
+        /** \brief Получить массив баров всех валютных пар по метке времени
+         * \param timestamp Метка времени
+         * \return Массив всех баров
+         */
+        std::map<std::string,xquotes_common::Candle> get_candles(const xtime::timestamp_t timestamp) {
+            std::map<std::string, xquotes_common::Candle> candles;
+            for(uint32_t symbol_index = 0;
+                symbol_index < intrade_bar_common::CURRENCY_PAIRS;
+                ++symbol_index) {
+                std::string symbol_name(intrade_bar_common::currency_pairs[symbol_index]);
+                candles[symbol_name] = websocket_api.get_timestamp_candle(symbol_index, timestamp);
+            }
+            return candles;
+        }
     };
 }
 

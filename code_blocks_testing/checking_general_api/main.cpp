@@ -41,9 +41,8 @@ int main() {
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
             } else {
-                std::cout << "GBPAUD error" << std::endl;
+                std::cout << "GBPAUD (history bar) error" << std::endl;
             }
-            std::cout << std::endl;
         } else
         /* получено событие НОВЫЙ ТИК */
         if(event == intrade_bar::IntradeBarApi::EventType::NEW_TICK) {
@@ -54,14 +53,27 @@ int main() {
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
             } else {
-                std::cout << "GBPAUD error" << std::endl;
+                std::cout << "GBPAUD (new tick) error" << std::endl;
             }
-            std::cout << std::endl;
         }
+
+        /* проверяем альтернативный метод получения баров */
+        std::map<std::string,xquotes_common::Candle> candles_2 = api.get_candles(timestamp);
+        xquotes_common::Candle candle_2 = intrade_bar::IntradeBarApi::get_candle("GBPAUD", candles_2);
+        if(intrade_bar::IntradeBarApi::check_candle(candle_2)) {
+            std::cout
+                << "GBPAUD (2) close: " << candle_2.close
+                << " t: " << xtime::get_str_date_time(candle_2.timestamp)
+                << std::endl;
+        } else {
+            std::cout << "GBPAUD (2) error" << std::endl;
+        }
+        std::cout << std::endl;
     });
 
     while(true) {
         std::this_thread::yield();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     return 0;
 }

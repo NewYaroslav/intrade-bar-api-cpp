@@ -75,6 +75,7 @@ namespace intrade_bar {
         uint32_t index_array_offset_timestamp_count = 0;
         xtime::ftimestamp_t last_offset_timestamp_sum = 0;
         std::atomic<double> offset_timestamp;                           /**< Смещение метки времени */
+        std::atomic<bool> is_autoupdate_logger_offset_timestamp;
 
         /** \brief Обновить смещение метки времени
          *
@@ -99,7 +100,7 @@ namespace intrade_bar {
             offset_timestamp = last_offset_timestamp_sum/
                 (xtime::ftimestamp_t)array_offset_timestamp_size;
             // Добавим смещение в логер
-            intrade_bar::Logger::set_offset_timestamp(offset_timestamp);
+            if(is_autoupdate_logger_offset_timestamp) intrade_bar::Logger::set_offset_timestamp(offset_timestamp);
         }
 
         /** \brief Обновить массив баров
@@ -277,6 +278,7 @@ namespace intrade_bar {
             is_close_connection = false;
             is_close = false;
             is_error = false;
+            is_autoupdate_logger_offset_timestamp = false;
             /* запустим соединение в отдельном потоке */
             client_thread = std::thread([&,sert_file] {
                 const std::string point("mr-axiano.com/fxcm2/");
@@ -446,6 +448,12 @@ namespace intrade_bar {
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         };
+
+        /** \brief Включить автообновление смещения метки времени логера
+         */
+        void enable_autoupdate_logger_offset_timestamp() {
+            is_autoupdate_logger_offset_timestamp = true;
+        }
 
         /** \brief Состояние соединения
          * \return вернет true, если соединение есть
