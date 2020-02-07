@@ -27,10 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.7"
-#define PROGRAM_DATE    "07.02.2020"
-
-#define DO_NOT_USE 0
+#define PROGRAM_VERSION "1.8"
+#define PROGRAM_DATE    "08.02.2020"
 
 using namespace std;
 
