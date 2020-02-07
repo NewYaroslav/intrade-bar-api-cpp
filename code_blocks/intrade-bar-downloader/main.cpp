@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.6"
-#define PROGRAM_DATE    "24.01.2020"
+#define PROGRAM_VERSION "1.7"
+#define PROGRAM_DATE    "07.02.2020"
 
 #define DO_NOT_USE 0
 
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
                 price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID;
             }
             if(value == "ask") {
-                price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID;
+                price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_ASK;
             }
         } else
         if(key == "only_broker_supported_currency_pairs" || key == "obscp") {
@@ -349,7 +349,10 @@ int main(int argc, char **argv) {
         if(is_only_broker_supported_currency_pairs &&
             !intrade_bar_common::is_currency_pairs[symbol]) continue;
 
-        /* получаем время */
+        /* получаем время уже загруженных даных
+         * функция get_min_max_day_timestamp позволяет получить метки времени данных по дате,
+          * т.е. переменные min_timestamp и max_timestampтолько содержат начало дня
+         */
         int err = xquotes_common::OK;
         xtime::timestamp_t min_timestamp = 0, max_timestamp = 0;
         err = hists[symbol]->get_min_max_day_timestamp(min_timestamp, max_timestamp);
@@ -424,13 +427,24 @@ int main(int argc, char **argv) {
             }
             /* записываем данные */
             err = hists[symbol]->write_candles(bars_inside_day, t);
-            intrade_bar::print_line(
-                    "write " +
-                    intrade_bar_common::currency_pairs[symbol] +
-                    " " +
-                    xtime::get_str_date(t) +
-                    " code " +
-                    std::to_string(err));
+            if(candles.size() > 0) {
+                intrade_bar::print_line(
+                        "write " +
+                        intrade_bar_common::currency_pairs[symbol] +
+                        " " +
+                        xtime::get_str_date(t) +
+                        " - " + xtime::get_str_date_time(candles.back().timestamp) +
+                        " code " +
+                        std::to_string(err));
+            } else {
+                intrade_bar::print_line(
+                        "write " +
+                        intrade_bar_common::currency_pairs[symbol] +
+                        " " +
+                        xtime::get_str_date(t) +
+                        " code " +
+                        std::to_string(err));
+            }
         }
         hists[symbol]->save();
         std::cout

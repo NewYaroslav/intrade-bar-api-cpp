@@ -297,17 +297,7 @@ namespace intrade_bar {
             if(!is_async) {
                 return http_api.request_balance();
             }
-            std::thread balance_thread = std::thread([&]{
-                for(size_t n = 0; n < 10; ++n) {
-                    if(is_stop_command) break;
-                    int err = http_api.request_balance();
-                    if(err == OK) break;
-                    std::this_thread::yield();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                }
-            });
-            balance_thread.detach();
-            return OK;
+            return http_api.async_request_balance();
         }
 
         /** \brief Открыть бинарный опцион

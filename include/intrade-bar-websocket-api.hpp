@@ -34,6 +34,7 @@
 #include <xquotes_common.hpp>
 #include <mutex>
 #include <atomic>
+#include <future>
 #include "utf8.h" // http://utfcpp.sourceforge.net/
 
 namespace intrade_bar {
@@ -46,7 +47,8 @@ namespace intrade_bar {
         using WssClient = SimpleWeb::SocketClient<SimpleWeb::WSS>;
         using json = nlohmann::json;
         std::shared_ptr<WssClient> client;      /**< Webclosket Клиент */
-        std::thread client_thread;              /**< Поток соединения */
+        //std::thread client_thread;              /**< Поток соединения */
+        std::future<void> client_future;        /**< Поток соединения */
 
         std::string file_name_websocket_log;
 
@@ -59,7 +61,7 @@ namespace intrade_bar {
         std::atomic<bool> is_websocket_init;    /**< Состояние соединения */
         std::atomic<bool> is_error;             /**< Ошибка соединения */
         std::atomic<bool> is_close_connection;  /**< Флаг для закрытия соединения */
-        std::atomic<bool> is_close;
+        //std::atomic<bool> is_close;
 
         typedef std::pair<double,xtime::ftimestamp_t> tick_price;                       /**< Тип для хранения тика (с учетом (bid+ask)/2) */
         std::array<tick_price, CURRENCY_PAIRS> array_tick_price;                        /**< Массив для хранение всех тиков */
@@ -276,11 +278,12 @@ namespace intrade_bar {
             offset_timestamp = 0;
             is_websocket_init = false;
             is_close_connection = false;
-            is_close = false;
+            //is_close = false;
             is_error = false;
             is_autoupdate_logger_offset_timestamp = false;
             /* запустим соединение в отдельном потоке */
-            client_thread = std::thread([&,sert_file] {
+            //client_thread = std::thread([&,sert_file] {
+            client_future = std::async(std::launch::async,[&, sert_file]() {
                 const std::string point("mr-axiano.com/fxcm2/");
                 while(true) {
                     try {
@@ -432,9 +435,9 @@ namespace intrade_bar {
 					const uint64_t RECONNECT_DELAY = 1000;
 					std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
                 } // while
-                is_close = true;
+                //is_close = true;
             });
-            client_thread.detach();
+            //client_thread.detach();
         }
 
         ~QuotationsStream() {
@@ -443,9 +446,29 @@ namespace intrade_bar {
             if(client_ptr) {
                 client_ptr->stop();
             }
+#if(0)
             while(!is_close) {
                 std::this_thread::yield();
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+#endif
+            /* Существует проблема с циклом yield().
+             * Если поток, вызывающий деструктор, имеет более высокий приоритет, чем завершаемый поток,
+             * то ваш проект может вечно жить в однопроцессорной системе.
+             * Даже в многоядерной системе может быть большая задержка.
+             * https://coderoad.ru/7927773
+             */
+            while(!client_future.valid()) {
+                //std::this_thread::yield();
+            };
+            try {
+                client_future.get();
+            }
+            catch(const std::exception &e) {
+                std::cerr << "Error: ~QuotationsStream(), what: " << e.what() << std::endl;
+            }
+            catch(...) {
+                std::cerr << "Error: ~QuotationsStream()" << std::endl;
             }
         };
 

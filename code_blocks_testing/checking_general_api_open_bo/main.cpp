@@ -55,6 +55,14 @@ int main() {
             } else {
                 std::cout << "GBPCAD error" << std::endl;
             }
+
+#if(0)
+            uint32_t api_id = 0;
+            api.open_bo("EURUSD", "test", 50, intrade_bar_common::BUY, 180, api_id);
+            std::cout << "api_id " << api_id << std::endl;
+#endif
+            api.update_balance();
+            std::cout << "balance: " << api.get_balance() << std::endl;
         }
     });
 
@@ -66,8 +74,11 @@ int main() {
     std::cout << "is demo: " << api.demo_account() << std::endl;
     std::cout << "is account currency RUB: " << api.account_rub_currency() << std::endl;
 
+#if(0)
     while(true) {
         std::this_thread::yield();
     }
+#endif
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     return 0;
 }

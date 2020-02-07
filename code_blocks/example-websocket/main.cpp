@@ -40,10 +40,11 @@ int main() {
             << "\r";
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if(iQuotationsStream.get_server_timestamp() >
-            (start_timestamp + xtime::SECONDS_IN_MINUTE)) break;
+            (start_timestamp + 10)) break;
     }
 
     /* отображаем актуальный бар */
+    xtime::timestamp_t stop_timestamp = xtime::get_timestamp() + 10;
     while(true) {
         xquotes_common::Candle candle = iQuotationsStream.get_candle(0);
         std::cout
@@ -57,6 +58,10 @@ int main() {
                 iQuotationsStream.get_server_timestamp())
             << "\r";
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if(xtime::get_timestamp() > stop_timestamp) {
+            std::cout << "end of testing" << std::endl;
+            return 0;
+        }
     }
     return 0;
 }

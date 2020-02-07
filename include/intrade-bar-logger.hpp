@@ -9,6 +9,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <future>
 #include <csignal>
 #include <dir.h>
 #include <nlohmann/json.hpp>
@@ -31,7 +32,8 @@ namespace intrade_bar {
             std::queue<std::pair<std::string, xtime::ftimestamp_t>> queue_string;
             std::queue<std::pair<json, xtime::ftimestamp_t>> queue_json;
             std::mutex queue_mutex;
-            std::thread file_thread;
+            //std::thread file_thread;
+            std::future<void> file_future;
             std::atomic<bool> is_init;
             std::atomic<bool> is_stop;
             std::atomic<bool> is_check_stop;
@@ -84,7 +86,8 @@ namespace intrade_bar {
             void init(const std::string &file_name) {
                 if(is_init) return;
                 is_init = true;
-                file_thread = std::thread([&,file_name] {
+                //file_thread = std::thread([&,file_name] {
+                file_future = std::async(std::launch::async,[&, file_name]() {
                     create_directory(file_name);
                     file.open(file_name, std::ios_base::app);
                     if(!file) {
@@ -96,14 +99,17 @@ namespace intrade_bar {
                     bool is_json = false;
                     xtime::ftimestamp_t ftimestamp; // Метка времени сообщения
                     while(true) {
-                        std::this_thread::yield();
                         if(!file) break;
                         {
                             std::lock_guard<std::mutex> lock(queue_mutex);
                             if(queue_ostringstream.empty() &&
                                 queue_string.empty() &&
                                 queue_json.empty()) {
-                                if(is_stop) break;
+                                if(is_stop) {
+                                    file.close();
+                                    break;
+                                }
+                                std::this_thread::yield();
                                 continue;
                             }
                             is_json = false;
@@ -159,22 +165,39 @@ namespace intrade_bar {
                         }
                         if(!file) break;
                         file << temp_str;
-                        file.flush();
+                        //file.flush();
                     }
                     is_check_stop = true;
                 });
-                file_thread.detach();
+                //file_thread.detach();
             }
 
             ~FileStream() {
-                is_stop = true;
+                is_stop = true; // посылаем сигнал остановиться потоку
+                /* Существует проблема с циклом yield().
+                 * Если поток, вызывающий деструктор, имеет более высокий приоритет, чем завершаемый поток,
+                 * то ваш проект может вечно жить в однопроцессорной системе.
+                 * Даже в многоядерной системе может быть большая задержка.
+                 * https://coderoad.ru/7927773
+                 */
+#if(0)
                 while(!is_check_stop) {
-                    std::this_thread::yield();
+                    //std::this_thread::yield();
                 }
-                if(file) {
-                    file.flush();
-                    file.close();
+#endif
+                while(!file_future.valid()) {
+                    //std::this_thread::yield();
+                };
+                try {
+                    file_future.get();
                 }
+                catch(const std::exception &e) {
+                    std::cerr << "Error: ~FileStream(), what: " << e.what() << std::endl;
+                }
+                catch(...) {
+                    std::cerr << "Error: ~FileStream()" << std::endl;
+                }
+                if(file) file.close();
             };
 
             template<class T>
