@@ -26,6 +26,7 @@
 
 #include "intrade-bar-https-api.hpp"
 #include "intrade-bar-websocket-api.hpp"
+#include <future>
 
 namespace intrade_bar {
     using json = nlohmann::json;
@@ -43,9 +44,8 @@ namespace intrade_bar {
     private:
         IntradeBarHttpApi http_api;
         QuotationsStream websocket_api;
-
+        std::future<void> callback_future;
         std::atomic<bool> is_stop_command;          /**< Команда закрытия соединения */
-        std::atomic<bool> is_stop;                  /**< Флаг закрытия соединения */
 
         /** \brief Скачать исторические данные в несколько потоков
          *
@@ -137,7 +137,6 @@ namespace intrade_bar {
 
             /* инициализация флагов и прочих переменных */
             is_stop_command = false;
-            is_stop = false;
 #if(0)
             /* ожидаем завершения подключения к потоку котировок */
             if(!websocket_api.wait()) {
@@ -165,11 +164,11 @@ namespace intrade_bar {
             //std::cout << "start of historical data initialization" << std::endl;
 
             /* создаем поток обработки событий */
-            std::thread stream_thread = std::thread([&,number_bars, callback] {
-
+            //std::thread stream_thread = std::thread([&,number_bars, callback] {
+            callback_future = std::async(std::launch::async,[&, number_bars, callback]() {
                 /* сначала инициализируем исторические данные */
                 uint32_t hist_data_number_bars = number_bars;
-                while(true) {
+                while(!is_stop_command) {
                     /* первым делом грузим исторические данные в несколько потоков */
                     const xtime::timestamp_t init_date_timestamp =
                         xtime::get_first_timestamp_minute(websocket_api.get_server_timestamp()) -
@@ -245,16 +244,24 @@ namespace intrade_bar {
 					std::this_thread::yield();
 					std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
-                is_stop = true;
+                //is_stop = true;
             });
-            stream_thread.detach();
+            //stream_thread.detach();
         }
 
         ~IntradeBarApi() {
             is_stop_command = true;
-            while(!is_stop) {
-                std::this_thread::yield();
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            if(callback_future.valid()) {
+                try {
+                    callback_future.wait();
+                    callback_future.get();
+                }
+                catch(const std::exception &e) {
+                    std::cerr << "Error: ~QuotationsStream(), what: " << e.what() << std::endl;
+                }
+                catch(...) {
+                    std::cerr << "Error: ~QuotationsStream()" << std::endl;
+                }
             }
         }
 

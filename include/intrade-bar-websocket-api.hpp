@@ -447,28 +447,28 @@ namespace intrade_bar {
                 client_ptr->stop();
             }
 #if(0)
-            while(!is_close) {
-                std::this_thread::yield();
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-#endif
             /* Существует проблема с циклом yield().
              * Если поток, вызывающий деструктор, имеет более высокий приоритет, чем завершаемый поток,
              * то ваш проект может вечно жить в однопроцессорной системе.
              * Даже в многоядерной системе может быть большая задержка.
              * https://coderoad.ru/7927773
              */
-            while(!client_future.valid()) {
-                //std::this_thread::yield();
-            };
-            try {
-                client_future.get();
+            while(!is_close) {
+                std::this_thread::yield();
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
-            catch(const std::exception &e) {
-                std::cerr << "Error: ~QuotationsStream(), what: " << e.what() << std::endl;
-            }
-            catch(...) {
-                std::cerr << "Error: ~QuotationsStream()" << std::endl;
+#endif
+            if(client_future.valid()) {
+                try {
+                    client_future.wait();
+                    client_future.get();
+                }
+                catch(const std::exception &e) {
+                    std::cerr << "Error: ~QuotationsStream(), what: " << e.what() << std::endl;
+                }
+                catch(...) {
+                    std::cerr << "Error: ~QuotationsStream()" << std::endl;
+                }
             }
         };
 
@@ -491,7 +491,7 @@ namespace intrade_bar {
          * \return вернет true, если соединение есть, иначе произошла ошибка
          */
         inline bool wait() {
-            while(!is_error && !is_websocket_init) {
+            while(!is_error && !is_websocket_init && !is_close_connection) {
 				std::this_thread::yield();
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
@@ -641,7 +641,7 @@ namespace intrade_bar {
             const xtime::ftimestamp_t timestamp_stop =
                 xtime::get_first_timestamp_minute(get_server_timestamp()) +
                 xtime::SECONDS_IN_MINUTE;
-            while(true) {
+            while(!is_close_connection) {
                 const xtime::ftimestamp_t t = get_server_timestamp();
                 if(t >= timestamp_stop) break;
                 if(f != nullptr) f(t, timestamp_stop);

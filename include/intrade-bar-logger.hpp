@@ -36,48 +36,48 @@ namespace intrade_bar {
             std::future<void> file_future;
             std::atomic<bool> is_init;
             std::atomic<bool> is_stop;
-            std::atomic<bool> is_check_stop;
+            //std::atomic<bool> is_check_stop;
 
-        /** \brief Разобрать путь на составляющие
-         *
-         * Данный метод парсит путь, например C:/Users\\user/Downloads разложит на
-         * C: Users user и Downloads
-         * \param path путь, который надо распарсить
-         * \param output_list список полученных элементов
-         */
-        void parse_path(std::string path, std::vector<std::string> &output_list) {
-            if(path.back() != '/' && path.back() != '\\')
-                path += "/";
-            std::size_t start_pos = 0;
-            while(true) {
-                std::size_t found_beg = path.find_first_of("/\\", start_pos);
-                if(found_beg != std::string::npos) {
-                    std::size_t len = found_beg - start_pos;
-                    if(len > 0) output_list.push_back(path.substr(start_pos, len));
-                    start_pos = found_beg + 1;
-                } else break;
+            /** \brief Разобрать путь на составляющие
+             *
+             * Данный метод парсит путь, например C:/Users\\user/Downloads разложит на
+             * C: Users user и Downloads
+             * \param path путь, который надо распарсить
+             * \param output_list список полученных элементов
+             */
+            void parse_path(std::string path, std::vector<std::string> &output_list) {
+                if(path.back() != '/' && path.back() != '\\')
+                    path += "/";
+                std::size_t start_pos = 0;
+                while(true) {
+                    std::size_t found_beg = path.find_first_of("/\\", start_pos);
+                    if(found_beg != std::string::npos) {
+                        std::size_t len = found_beg - start_pos;
+                        if(len > 0) output_list.push_back(path.substr(start_pos, len));
+                        start_pos = found_beg + 1;
+                    } else break;
+                }
             }
-        }
 
-        /** \brief Создать директорию
-         * \param path директория, которую необходимо создать
-         */
-        void create_directory(std::string path) {
-            std::vector<std::string> dir_list;
-            parse_path(path, dir_list);
-            std::string name;
-            for(size_t i = 0; i < (dir_list.size() - 1); i++) {
-                name += dir_list[i] + "\\";
-                if(dir_list[i] == "..") continue;
-                mkdir(name.c_str());
+            /** \brief Создать директорию
+             * \param path директория, которую необходимо создать
+             */
+            void create_directory(std::string path) {
+                std::vector<std::string> dir_list;
+                parse_path(path, dir_list);
+                std::string name;
+                for(size_t i = 0; i < (dir_list.size() - 1); i++) {
+                    name += dir_list[i] + "\\";
+                    if(dir_list[i] == "..") continue;
+                    mkdir(name.c_str());
+                }
             }
-        }
 
         public:
             FileStream() {
                 is_init = false;
                 is_stop = false;
-                is_check_stop = false;
+                //is_check_stop = false;
             };
 
             /** \brief Инициализировать поток записи в файл
@@ -91,7 +91,7 @@ namespace intrade_bar {
                     create_directory(file_name);
                     file.open(file_name, std::ios_base::app);
                     if(!file) {
-                        is_check_stop = true;
+                        //is_check_stop = true;
                         return;
                     }
                     std::string temp_str;           // Временная строка
@@ -167,7 +167,7 @@ namespace intrade_bar {
                         file << temp_str;
                         //file.flush();
                     }
-                    is_check_stop = true;
+                    //is_check_stop = true;
                 });
                 //file_thread.detach();
             }
@@ -185,17 +185,17 @@ namespace intrade_bar {
                     //std::this_thread::yield();
                 }
 #endif
-                while(!file_future.valid()) {
-                    //std::this_thread::yield();
-                };
-                try {
-                    file_future.get();
-                }
-                catch(const std::exception &e) {
-                    std::cerr << "Error: ~FileStream(), what: " << e.what() << std::endl;
-                }
-                catch(...) {
-                    std::cerr << "Error: ~FileStream()" << std::endl;
+                if(file_future.valid()) {
+                    try {
+                        file_future.wait();
+                        file_future.get();
+                    }
+                    catch(const std::exception &e) {
+                        std::cerr << "Error: ~FileStream(), what: " << e.what() << std::endl;
+                    }
+                    catch(...) {
+                        std::cerr << "Error: ~FileStream()" << std::endl;
+                    }
                 }
                 if(file) file.close();
             };

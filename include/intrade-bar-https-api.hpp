@@ -1863,23 +1863,17 @@ namespace intrade_bar {
             {
                 std::lock_guard<std::mutex> lock(request_future_mutex);
                 for(size_t i = 0; i < request_future.size(); ++i) {
-                    /* Существует проблема с циклом yield().
-                     * Если поток, вызывающий деструктор, имеет более высокий приоритет, чем завершаемый поток,
-                     * то ваш проект может вечно жить в однопроцессорной системе.
-                     * Даже в многоядерной системе может быть большая задержка.
-                     * https://coderoad.ru/7927773
-                     */
-                    while(!request_future[i].valid()) {
-                        //std::this_thread::yield();
-                    };
-                    try {
-                        request_future[i].get();
-                    }
-                    catch(const std::exception &e) {
-                        std::cerr << "Error: ~QuotationsStream(), what: " << e.what() << std::endl;
-                    }
-                    catch(...) {
-                        std::cerr << "Error: ~QuotationsStream()" << std::endl;
+                    if(request_future[i].valid()) {
+                        try {
+                            request_future[i].wait();
+                            request_future[i].get();
+                        }
+                        catch(const std::exception &e) {
+                            std::cerr << "Error: ~QuotationsStream(), what: " << e.what() << std::endl;
+                        }
+                        catch(...) {
+                            std::cerr << "Error: ~QuotationsStream()" << std::endl;
+                        }
                     }
                 }
             }
