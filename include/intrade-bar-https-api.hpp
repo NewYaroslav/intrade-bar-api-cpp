@@ -95,9 +95,12 @@ namespace intrade_bar {
             while(index < request_future.size()) {
                 try {
                     if(request_future[index].valid()) {
-                        request_future[index].get();
-                        request_future.erase(request_future.begin() + index);
-                        continue;
+                        std::future_status status = request_future[index].wait_for(std::chrono::milliseconds(0));
+                        if(status == std::future_status::ready) {
+                            request_future[index].get();
+                            request_future.erase(request_future.begin() + index);
+                            continue;
+                        }
                     }
                 }
                 catch(const std::exception &e) {
@@ -988,7 +991,6 @@ namespace intrade_bar {
             {
                 std::lock_guard<std::mutex> lock(request_future_mutex);
                 request_future.resize(request_future.size() + 1);
-                //std::thread bo_thread = std::thread([&,
                 request_future.back() = std::async(std::launch::async,[&,
                         symbol,
                         note,amount,
@@ -1002,6 +1004,7 @@ namespace intrade_bar {
                     xtime::timestamp_t open_timestamp = 0;
                     double delay = 0;
                     uint64_t id_deal = 0;
+
                     int err_sprint = open_bo_sprint(
                         symbol_index,
                         amount,
