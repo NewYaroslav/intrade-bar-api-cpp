@@ -912,7 +912,7 @@ namespace intrade_bar {
                 const double amount,
                 const int contract_type,
                 const uint32_t duration,
-                uint32_t &api_bet_id,
+                uint64_t &api_bet_id,
                 std::function<void(const Bet &bet)> callback = nullptr) {
             if(!is_api_init) return AUTHORIZATION_ERROR;
             if(bets_counter >= (int)MAX_NUM_BET) {
@@ -993,7 +993,8 @@ namespace intrade_bar {
                 request_future.resize(request_future.size() + 1);
                 request_future.back() = std::async(std::launch::async,[&,
                         symbol,
-                        note,amount,
+                        note,
+						amount,
                         contract_type,
                         duration,
                         symbol_index,
@@ -1230,7 +1231,7 @@ namespace intrade_bar {
          * \param api_bet_id Уникальный номер ставки, который возвращает метод async_open_bo_sprint
          * \return Код ошибки или 0 в случае успеха
          */
-        int get_bet(Bet &bet, const uint32_t api_bet_id) {
+        int get_bet(Bet &bet, const uint64_t api_bet_id) {
             {
                 std::lock_guard<std::mutex> lock(array_bets_mutex);
                 for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {

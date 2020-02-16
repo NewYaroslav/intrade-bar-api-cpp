@@ -325,7 +325,7 @@ namespace intrade_bar {
                 std::function<void(
                     const IntradeBarHttpApi::Bet &bet)> callback = nullptr) {
             std::string note;
-            uint32_t api_bet_id = 0;
+            uint64_t api_bet_id = 0;
             return http_api.async_open_bo_sprint(
                 symbol,
                 note,
@@ -352,7 +352,7 @@ namespace intrade_bar {
                 const double amount,
                 const int contract_type,
                 const uint32_t duration,
-                uint32_t &api_bet_id,
+                uint64_t &api_bet_id,
                 std::function<void(
                     const IntradeBarHttpApi::Bet &bet)> callback = nullptr) {
             return http_api.async_open_bo_sprint(
