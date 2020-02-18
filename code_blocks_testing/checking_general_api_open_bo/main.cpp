@@ -68,7 +68,9 @@ int main() {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-    int err_connect = api.connect(auth_json);
+    //int err_connect = api.connect(auth_json);
+    int err_connect = api.connect(auth_json["email"],auth_json["password"],true,true);
+
     std::cout << "connect code: " << err_connect << std::endl;
     std::cout << "user id: " << api.get_user_id() << std::endl;
     std::cout << "user hash: " << api.get_user_hash() << std::endl;

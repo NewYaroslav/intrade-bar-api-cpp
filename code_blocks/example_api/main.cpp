@@ -74,6 +74,10 @@ int main() {
     }
 #endif
 
+    std::vector<xquotes_common::Candle> candles;
+    iApi.get_historical_data(0,xtime::get_timestamp(18,2,2020), xtime::get_timestamp(18,2,2020,1), candles);
+    std::cout << "candles: " << candles.size() << std::endl;
+
     double delay = 0;
     uint64_t id_deal = 0;
     xtime::timestamp_t timestamp_open = 0;

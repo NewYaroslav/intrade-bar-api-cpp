@@ -344,7 +344,8 @@ namespace intrade_bar {
          * \param timeout Таймаут
          * \param writer_callback Callback-функция для записи данных от сервера
          * \param header_callback Callback-функция для обработки заголовков ответа
-         * \param s_clear_cookie Очистить cookie файлы
+         * \param is_use_cookie Использовать cookie файлы
+         * \param is_clear_cookie Очистить cookie файлы
          * \param is_post Использовать POST запросы
          * \return вернет указатель на CURL или NULL, если инициализация не удалась
          */
@@ -357,6 +358,7 @@ namespace intrade_bar {
                 int (*writer_callback)(char*, size_t, size_t, void*),
                 int (*header_callback)(char*, size_t, size_t, void*),
                 void *userdata,
+                const bool is_use_cookie = true,
                 const bool is_clear_cookie = false,
                 const bool is_post = true) {
             CURL *curl = curl_easy_init();
@@ -369,9 +371,11 @@ namespace intrade_bar {
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writer_callback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout); // выход через N сек
-            if(is_clear_cookie) curl_easy_setopt(curl, CURLOPT_COOKIELIST, "ALL");
-            else curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookie_file.c_str()); // запускаем cookie engine
-            curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_file.c_str()); // запишем cookie после вызова curl_easy_cleanup
+            if(is_use_cookie) {
+                if(is_clear_cookie) curl_easy_setopt(curl, CURLOPT_COOKIELIST, "ALL");
+                else curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookie_file.c_str()); // запускаем cookie engine
+                curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_file.c_str()); // запишем cookie после вызова curl_easy_cleanup
+            }
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, userdata);
             curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, http_headers);
@@ -387,6 +391,7 @@ namespace intrade_bar {
          * \param body Тело сообщения
          * \param http_headers Заголовки
          * \param response Ответ
+         * \param is_use_cookie Использовать cookie файлы
          * \param is_clear_cookie Очистить cookie
          * \param timeout Время ожидания ответа
          * \return код ошибки
@@ -396,6 +401,7 @@ namespace intrade_bar {
                 const std::string &body,
                 struct curl_slist *http_headers,
                 std::string &response,
+                const bool is_use_cookie = true,
                 const bool is_clear_cookie = false,
                 const int timeout = POST_STANDART_TIME_OUT) {
             int content_encoding = 0;   // Тип кодирования сообщения
@@ -409,7 +415,9 @@ namespace intrade_bar {
                 intrade_bar_writer,
                 intrade_bar_header_callback,
                 &content_encoding,
-                is_clear_cookie);
+                is_use_cookie,
+                is_clear_cookie,
+                true);
 
             if(curl == NULL) return CURL_CANNOT_BE_INIT;
             CURLcode result = curl_easy_perform(curl);
@@ -467,6 +475,7 @@ namespace intrade_bar {
                 const std::string &body,
                 struct curl_slist *http_headers,
                 std::string &response,
+                const bool is_use_cookie = true,
                 const bool is_clear_cookie = false,
                 const int timeout = GET_QUOTES_HISTORY_TIME_OUT) {
             int content_encoding = 0;   // Тип кодирования сообщения
@@ -480,6 +489,7 @@ namespace intrade_bar {
                 intrade_bar_writer,
                 intrade_bar_header_callback,
                 &content_encoding,
+                is_use_cookie,
                 is_clear_cookie,
                 false);
 
@@ -601,7 +611,7 @@ namespace intrade_bar {
             const std::string url_profile = "https://intrade.bar/profile";
             const std::string body_profile;
             std::string response_profile;
-            int err = post_request(url_profile, body_profile, http_headers_auth, response_profile);
+            int err = post_request(url_profile, body_profile, http_headers_auth, response_profile, true, false);
             if(err != OK) return err;
             return parse_profile(response_profile);
         }
@@ -615,7 +625,7 @@ namespace intrade_bar {
             const std::string url("https://intrade.bar/balance.php");
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
-            int err = post_request(url, body, http_headers_switch, response);
+            int err = post_request(url, body, http_headers_switch, response, false, false);
             if(err != OK) return err;
 
             const char STR_RUB[] = u8"₽"; // Символ рубля
@@ -690,7 +700,7 @@ namespace intrade_bar {
             const std::string url = "https://intrade.bar/user_real_trade.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
-            int err = post_request(url, body, http_headers_switch, response);
+            int err = post_request(url, body, http_headers_switch, response, true, false);
             if(err != OK) return err;
             if(response != "ok") return NO_ANSWER;
             return OK;
@@ -703,7 +713,7 @@ namespace intrade_bar {
             const std::string url = "https://intrade.bar/user_currency_edit.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
-            int err = post_request(url, body, http_headers_switch, response);
+            int err = post_request(url, body, http_headers_switch, response, true, false);
             if(err != OK) return err;
             if(response != "ok") return NO_ANSWER;
             return OK;
@@ -850,7 +860,9 @@ namespace intrade_bar {
                 url_open_bo,
                 body_sprint,
                 http_headers_open_bo,
-                response_sprint);
+                response_sprint,
+                true,
+                false);
             if(err != OK) return err;
             xtime::ftimestamp_t sprint_end = xtime::get_ftimestamp();
             delay = (double)(sprint_end - sprint_start);
@@ -896,7 +908,9 @@ namespace intrade_bar {
                 url_open_bo,
                 body_check,
                 http_headers_open_bo,
-                response);
+                response,
+                true,
+                false);
             if(err != OK) return err;
             //std::cout << response << std::endl;
             std::size_t error_pos = response.find("error");
@@ -1290,6 +1304,7 @@ namespace intrade_bar {
                 http_headers_quotes_history,
                 response,
                 false,
+                false,
                 10);
             if(err != OK) return err;
             try {
@@ -1331,6 +1346,7 @@ namespace intrade_bar {
                     body,
                     http_headers_quotes_history,
                     response,
+                    false,
                     false,
                     10);
                 if(err == OK) break;
@@ -1524,6 +1540,7 @@ namespace intrade_bar {
                 http_headers_quotes,
                 response_quotes,
                 false,
+                false,
                 POST_QUOTES_TIME_OUT);
             if(err != OK) return err;
 
@@ -1638,6 +1655,7 @@ namespace intrade_bar {
                 body,
                 http_headers_quotes,
                 response,
+                true,
                 false,
                 30);
             if(err != OK) return err;
@@ -1666,7 +1684,7 @@ namespace intrade_bar {
             std::string url_login = "https://intrade.bar/login";
             std::string body_login = "email=" + email + "&password=" + password + "&action=";
             std::string response_login;
-            int err = post_request(url_login, body_login, http_headers_auth, response_login, true);
+            int err = post_request(url_login, body_login, http_headers_auth, response_login, true, true);
             if(err != OK) return err;
             const std::string str_auth("intrade.bar/auth/");
             std::string fragment_url;
@@ -1678,7 +1696,7 @@ namespace intrade_bar {
             const std::string body_auth;
             std::string response_auth;
             // по идее не обязательно
-            err = post_request(url_auth, body_auth, http_headers_auth, response_auth);
+            err = post_request(url_auth, body_auth, http_headers_auth, response_auth, true, false);
             if(err != OK) return err;
             is_api_init = true; // ставим флаг готовности к работе
             return OK;
@@ -1695,7 +1713,7 @@ namespace intrade_bar {
             const std::string url_login = "https://intrade.bar/login";
             const std::string body_login = "email=" + email + "&password=" + password + "&action=";
             std::string response_login;
-            int err = post_request(url_login, body_login, http_headers_auth, response_login, true);
+            int err = post_request(url_login, body_login, http_headers_auth, response_login, true, true);
             if(err != OK) {
                 /* записываем лог *********************************************/
                 json j_work;
@@ -1721,7 +1739,7 @@ namespace intrade_bar {
             const std::string body_auth;
             std::string response_auth;
             /* по идее не обязательно */
-            if((err = post_request(url_auth, body_auth, http_headers_auth, response_auth)) != OK) return err;
+            if((err = post_request(url_auth, body_auth, http_headers_auth, response_auth, true, false)) != OK) return err;
             /* получаем из профиля настройки */
             if((err = request_profile()) != OK) return err;
             if((err = request_balance()) != OK) return err;
