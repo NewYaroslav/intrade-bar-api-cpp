@@ -632,15 +632,26 @@ namespace intrade_bar {
                 is_rub_currency = false;
             } else return STRANGE_PROGRAM_BEHAVIOR;
 
-            // очищаем от пробелов и заменяем запятую на точку
+            /* очищаем от пробелов, лишних символов и заменяем запятую на точку */
             response.replace(response.find(","),1,".");
+            if(is_rub_currency) {
+                size_t pos = response.find(STR_RUB);
+                if(pos != std::string::npos) {
+                    response = response.substr(0,pos);
+                }
+            } else {
+                size_t pos = response.find(STR_USD);
+                if(pos != std::string::npos) {
+                    response = response.substr(0,pos);
+                }
+            }
             response.erase(std::remove(response.begin(),response.end(), ' '), response.end());
             if(is_rub_currency) {
                 if(is_demo_account) balance_demo_rub = atof(response.c_str());
-                else balance_real_rub = atof(response.c_str());
+                else balance_real_rub = strtod(response.c_str(), NULL);
             } else {
                 if(is_demo_account) balance_demo_usd = atof(response.c_str());
-                else balance_real_usd = atof(response.c_str());
+                else balance_real_usd = strtod(response.c_str(), NULL);
             }
             return OK;
         }
@@ -864,10 +875,13 @@ namespace intrade_bar {
         }
 
         /** \brief Проверить бинарный опицон
-         * \param id_deal Номер уникальной сделки
+         *
+         * Данный метод проверяет результат закрытия опциона по его уникальному номеру.
+         * Если опцион еще не закрылся, то метод вернет ошибку!
+         * \param id_deal Номер уникальной сделки (ЭТО НОМЕР БРОКЕРА, А НЕ ID ВНУТРИ ЭТОЙ БИБЛИОТЕКИ)
          * \param price Цена закрытия оцпиона
          * \param profit Профит опциона (если будет равен 0, значит сделка убыточная)
-         * \return состояние ошибки
+         * \return Код ошибки
          */
         int check_bo(const uint64_t id_deal, double &price, double &profit) {
             const std::string url_open_bo("https://intrade.bar/trade_check2.php");
@@ -886,12 +900,15 @@ namespace intrade_bar {
             if(err != OK) return err;
             //std::cout << response << std::endl;
             std::size_t error_pos = response.find("error");
-            if(error_pos != std::string::npos) return ERROR_RESPONSE;
+            if(error_pos != std::string::npos) {
+                std::cout << response << std::endl;
+                return ERROR_RESPONSE;
+            }
             // 75.3;1.82
             std::size_t first_pos = response.find(";");
             if(first_pos == std::string::npos) return STRANGE_PROGRAM_BEHAVIOR;
-            price = atof(response.substr(0, first_pos).c_str());
-            profit = atof(response.substr(first_pos + 1).c_str());
+            price = strtod(response.substr(0, first_pos).c_str(),NULL);
+            profit = strtod(response.substr(first_pos + 1).c_str(),NULL);
             return OK;
         }
 

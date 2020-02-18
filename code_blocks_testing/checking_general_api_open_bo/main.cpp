@@ -66,6 +66,8 @@ int main() {
         }
     });
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
     int err_connect = api.connect(auth_json);
     std::cout << "connect code: " << err_connect << std::endl;
     std::cout << "user id: " << api.get_user_id() << std::endl;
@@ -79,6 +81,6 @@ int main() {
         std::this_thread::yield();
     }
 #endif
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(120000));
     return 0;
 }

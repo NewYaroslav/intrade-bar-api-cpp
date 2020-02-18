@@ -24,6 +24,7 @@
 #ifndef INTRADE_BAR_API_HPP_INCLUDED
 #define INTRADE_BAR_API_HPP_INCLUDED
 
+
 #include "intrade-bar-https-api.hpp"
 #include "intrade-bar-websocket-api.hpp"
 #include <future>

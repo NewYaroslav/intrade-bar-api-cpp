@@ -10,7 +10,8 @@
 #include <nlohmann/json.hpp>
 #include <xtime.hpp>
 
-#include "intrade-bar-api.hpp"
+//#include "intrade-bar-api.hpp"
+#include "intrade-bar-https-api.hpp"
 
 using namespace std;
 
@@ -22,7 +23,7 @@ int main() {
     auth_file >> auth_json;
     auth_file.close();
 
-    intrade_bar::IntradeBarApi iApi;
+    intrade_bar::IntradeBarHttpApi iApi;
     int err_connect = iApi.connect(auth_json);
     std::cout << "connect code: " << err_connect << std::endl;
     if(err_connect != 0) return 0;
@@ -32,7 +33,11 @@ int main() {
     std::cout << "balance: " << iApi.get_balance() << std::endl;
     std::cout << "is demo: " << iApi.demo_account() << std::endl;
     std::cout << "is account currency RUB: " << iApi.account_rub_currency() << std::endl;
+    iApi.async_request_balance();
 
+    std::cout << "request_profile: " << iApi.request_profile() << std::endl;
+    xtime::delay(5);
+    std::cout << "request_profile: " << iApi.request_profile() << std::endl;
 #if(0)
     std::vector<double> prices;
     std::vector<xtime::timestamp_t> timestamps;
@@ -81,11 +86,13 @@ int main() {
     if(err_sprint == intrade_bar::OK)
     while(true) {
         double price = 0, profit = 0;
+        iApi.async_request_balance();
+        std::cout << "balance: " << iApi.get_balance() << std::endl;
         int err_check = iApi.check_bo(id_deal, price, profit);
         std::cout << "check_bo: " << err_check << std::endl;
         std::cout << "price: " << price << std::endl;
         std::cout << "profit: " << profit << std::endl;
-        xtime::delay(1);
+        xtime::delay(5);
     }
     while(true) {
         std::this_thread::yield();
