@@ -50,6 +50,8 @@ namespace intrade_bar {
 
         /** \brief Скачать исторические данные в несколько потоков
          *
+         * Важной особенностью данного метода является то, что он загружает
+         * данные на number_bars ВГЛУБЬ ИСТОРИИ, А НЕ ОТ МЕТКИ ВРЕМЕНИ date_timestamp В БУДУЩЕЕ!
          * \param candles Массив баров. Размерность: индекс символа, бары
          * \param date_timestamp Конечная дата загрузки
          * \param number_bars Количество баров
@@ -88,6 +90,11 @@ namespace intrade_bar {
             }
         }
 
+        /** \brief Скачать истрические данные
+         *
+         * Важной особенностью данного метода является то, что он загружает
+         * данные на number_bars ВГЛУБЬ ИСТОРИИ, А НЕ ОТ МЕТКИ ВРЕМЕНИ date_timestamp В БУДУЩЕЕ!
+         */
         void download_historical_data(
                 std::vector<std::map<std::string,xquotes_common::Candle>> &array_candles,
                 const xtime::timestamp_t date_timestamp,
@@ -112,6 +119,38 @@ namespace intrade_bar {
                 }
             }
         }
+
+        /** \brief Функция для слияния данных свечей
+         *
+         * Данная функция мозволяет соединить данные из разных источников.
+         * Недостабщие данные в candles_src будут добавлены из candles_add.
+         * \param symbols Массивы символов
+         * \param candles_src Приритетный контейнер с данными. Ключ - имя символа, значение - бар/свеча
+         * \param candles_add Второстепенный контейнер с данными. Ключ - имя символа, значение - бар/свеча
+         * \param output_candles Контейнер с конечными данными
+         */
+        template<class SYMBOLS_TYPE, class CANDLE_TYPE>
+        void merge_candles(
+                const SYMBOLS_TYPE &symbols,
+                const std::map<std::string, CANDLE_TYPE> &candles_src,
+                const std::map<std::string, CANDLE_TYPE> &candles_add,
+                std::map<std::string, CANDLE_TYPE> &output_candles) {
+            for(uint32_t symbol = 0; symbol < symbols.size(); ++symbol) {
+                auto it_src = candles_src.find(symbols[symbol]);
+                auto it_add = candles_add.find(symbols[symbol]);
+                if(it_src == candles_src.end() && it_add == candles_add.end()) continue;
+                if(it_src->second.timestamp != it_add->second.timestamp) continue;
+                output_candles[symbols[symbol]] = it_src->second;
+                auto it_new = output_candles.find(symbols[symbol]);
+                it_new->second.close = it_src->second.close != 0.0 ? it_src->second.close : it_add->second.close != 0.0 ? it_add->second.close : 0.0;
+                it_new->second.high = it_src->second.high != 0.0 ? it_src->second.high : it_add->second.high != 0.0 ? it_add->second.high : 0.0;
+                it_new->second.low = it_src->second.low != 0.0 ? it_src->second.low : it_add->second.low != 0.0 ? it_add->second.low : 0.0;
+                it_new->second.open = it_src->second.open != 0.0 ? it_src->second.open : it_add->second.open != 0.0 ? it_add->second.open : 0.0;
+                it_new->second.volume = it_src->second.volume != 0.0 ? it_src->second.volume : it_add->second.volume != 0.0 ? it_add->second.volume : 0.0;
+                it_new->second.timestamp = it_src->second.timestamp;
+            }
+        }
+
     public:
 
         /** \brief Конструктор класса API
@@ -169,19 +208,20 @@ namespace intrade_bar {
             callback_future = std::async(std::launch::async,[&, number_bars, callback]() {
                 /* сначала инициализируем исторические данные */
                 uint32_t hist_data_number_bars = number_bars;
+                uint64_t last_minute = 0;
                 while(!is_stop_command) {
                     /* первым делом грузим исторические данные в несколько потоков */
                     const xtime::timestamp_t init_date_timestamp =
                         xtime::get_first_timestamp_minute(websocket_api.get_server_timestamp()) -
                         xtime::SECONDS_IN_MINUTE;
-                    //std::cout << "download_historical_data" << std::endl;
+
                     std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
-                    download_historical_data(array_candles, init_date_timestamp, hist_data_number_bars);
+                    download_historical_data(array_candles, init_date_timestamp, hist_data_number_bars + 1);
 
                     /* далее отправляем загруженные данные в callback */
-                    xtime::timestamp_t start_timestamp = init_date_timestamp - (hist_data_number_bars - 1) * xtime::SECONDS_IN_MINUTE;
-                    //xtime::timestamp_t stop_timestamp = init_date_timestamp;
-                    for(size_t i = 0; i < array_candles.size(); ++i) {
+                    xtime::timestamp_t start_timestamp = init_date_timestamp - (hist_data_number_bars) * xtime::SECONDS_IN_MINUTE;
+
+                    for(size_t i = 1; i < array_candles.size(); ++i) {
                         const xtime::timestamp_t timestamp = i * xtime::SECONDS_IN_MINUTE + start_timestamp;
                         if(callback != nullptr) callback(array_candles[i], EventType::HISTORICAL_DATA_RECEIVED, timestamp);
                     }
@@ -189,8 +229,12 @@ namespace intrade_bar {
                     const xtime::timestamp_t end_date_timestamp =
                         xtime::get_first_timestamp_minute(websocket_api.get_server_timestamp()) -
                         xtime::SECONDS_IN_MINUTE;
+
+                    last_minute = (end_date_timestamp + xtime::SECONDS_IN_MINUTE) / xtime::SECONDS_IN_MINUTE;
+
                     if(end_date_timestamp == init_date_timestamp) break;
                     hist_data_number_bars = (end_date_timestamp - init_date_timestamp) / xtime::SECONDS_IN_MINUTE;
+
 					std::this_thread::yield();
                 }
 
@@ -198,7 +242,7 @@ namespace intrade_bar {
 
                 /* далее занимаемся получением новызх тиков */
                 xtime::timestamp_t last_timestamp = (xtime::timestamp_t)(websocket_api.get_server_timestamp() + 0.5);
-                uint64_t last_minute = last_timestamp / xtime::SECONDS_IN_MINUTE;
+                //uint64_t last_minute = last_timestamp / xtime::SECONDS_IN_MINUTE;
                 while(!is_stop_command) {
                     xtime::ftimestamp_t server_ftimestamp = websocket_api.get_server_timestamp();
                     xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
@@ -207,41 +251,81 @@ namespace intrade_bar {
 						std::this_thread::sleep_for(std::chrono::milliseconds(1));
                         continue;
                     }
-                    /* начало новой секунды,
+
+                    /* тут мы окажемся с началом новой секунды,
                      * собираем актуальные цены бара и вызываем callback
                      */
-                    last_timestamp = timestamp;
-                    //xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
-                    std::map<std::string,xquotes_common::Candle> candles;
-                    for(uint32_t symbol_index = 0;
-                        symbol_index < intrade_bar_common::CURRENCY_PAIRS;
-                        ++symbol_index) {
-                        std::string symbol_name(intrade_bar_common::currency_pairs[symbol_index]);
-                        candles[symbol_name] = websocket_api.get_timestamp_candle(symbol_index, timestamp);
-                    }
 
-                    /* вызов callback */
-                    if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
+                    if((timestamp - last_timestamp) < xtime::SECONDS_IN_MINUTE) {
+                        std::map<std::string,xquotes_common::Candle> candles;
+                        for(uint32_t symbol_index = 0;
+                            symbol_index < intrade_bar_common::CURRENCY_PAIRS;
+                            ++symbol_index) {
+                            candles[intrade_bar_common::currency_pairs[symbol_index]] =
+                                websocket_api.get_timestamp_candle(symbol_index, timestamp);
+                        }
+
+                        /* вызов callback */
+                        if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
+                    }
+                    last_timestamp = timestamp;
 
                     /* загрузка исторических данных и повторный вызов callback,
                      * если нужно
                      */
-                    uint64_t server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
+                    server_ftimestamp = websocket_api.get_server_timestamp();
+                    timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
+                    const uint64_t server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
                     if(server_minute <= last_minute) {
                         std::this_thread::yield();
 						std::this_thread::sleep_for(std::chrono::milliseconds(1));
                         continue;
                     }
+
+                    const uint64_t number_new_bars = server_minute - last_minute;
                     last_minute = server_minute;
 
-                    /* загружаем исторические данные в несколько потоков */
-                    const xtime::timestamp_t download_date_timestamp =
-                        xtime::get_first_timestamp_minute(timestamp) -
-                        xtime::SECONDS_IN_MINUTE;
-                    //std::cout << "download_historical_data: " << xtime::get_str_date_time(download_date_timestamp) << std::endl;
-                    std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
-                    download_historical_data(array_candles, download_date_timestamp, 1);
-                    if(callback != nullptr) callback(array_candles[0], EventType::HISTORICAL_DATA_RECEIVED, download_date_timestamp);
+                    for(uint64_t l = 0; l < number_new_bars; ++l) {
+                        /* загружаем исторические данные в несколько потоков */
+                        //const xtime::timestamp_t download_date_timestamp =
+                        //    xtime::get_first_timestamp_minute(timestamp) -
+                        //    xtime::SECONDS_IN_MINUTE;
+                        const xtime::timestamp_t download_date_timestamp =
+                            (server_minute * xtime::SECONDS_IN_MINUTE) -
+                            //xtime::SECONDS_IN_MINUTE -
+                            xtime::SECONDS_IN_MINUTE * (number_new_bars - l);
+
+                        //std::cout << "download_historical_data: " << xtime::get_str_date_time(download_date_timestamp) << std::endl;
+                        std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
+                        /* качаем два бара, так как один бар скачать не выйдет */
+                        download_historical_data(array_candles, download_date_timestamp, 2);
+
+                        /* сливаем данные исторические и полученные от потока котировок
+                         * это повышает стабильность торговли
+                         */
+                        std::map<std::string,xquotes_common::Candle> array_merge_candles;
+                        std::map<std::string,xquotes_common::Candle> real_candles;
+                        for(uint32_t symbol_index = 0;
+                            symbol_index < intrade_bar_common::CURRENCY_PAIRS;
+                            ++symbol_index) {
+                            //std::string symbol_name(intrade_bar_common::currency_pairs[symbol_index]);
+                            real_candles[intrade_bar_common::currency_pairs[symbol_index]] = websocket_api.get_timestamp_candle(
+                                symbol_index,
+                                download_date_timestamp);
+                        }
+                        merge_candles(
+                            intrade_bar_common::currency_pairs,
+                            array_candles[1],
+                            real_candles,
+                            array_merge_candles);
+
+
+                        if(callback != nullptr) callback(
+                            array_merge_candles,
+                            EventType::HISTORICAL_DATA_RECEIVED,
+                            download_date_timestamp);
+					}
+
 					std::this_thread::yield();
 					std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }

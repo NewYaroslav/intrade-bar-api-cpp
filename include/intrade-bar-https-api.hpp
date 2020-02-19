@@ -1354,6 +1354,7 @@ namespace intrade_bar {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000 * (a + 1)));
             }
             if(err != OK) return err;
+            //std::cout << "response " << response << std::endl;
             try {
                 json j = json::parse(response);
                 std::string str_err = j["response"]["error"];

@@ -10,17 +10,17 @@
 #include <nlohmann/json.hpp>
 #include <xtime.hpp>
 
-#include "intrade-bar-api.hpp"
+#include "intrade-bar-https-api.hpp"
 
 using namespace std;
 
 int get_min_timestamp(
-        intrade_bar::IntradeBarApi &api,
+        intrade_bar::IntradeBarHttpApi &api,
         const uint32_t symbol,
         xtime::timestamp_t &min_timestamp);
 
 int search_start_date_quotes(
-        intrade_bar::IntradeBarApi &api,
+        intrade_bar::IntradeBarHttpApi &api,
         const uint32_t symbol,
         xtime::timestamp_t &min_timestamp,
         std::function<void(const uint32_t day)> f = nullptr) ;
@@ -40,7 +40,7 @@ int main() {
     std::string email = auth_json["email"];
     std::string password = auth_json["password"];
     /* подключаемся */
-    intrade_bar::IntradeBarApi iApi;
+    intrade_bar::IntradeBarHttpApi iApi;
     //int err_connect = iApi.connect(auth_json);
     //int err_connect = iApi.connect(email, password);
     //if(err_connect != 0) {
@@ -94,8 +94,8 @@ int main() {
 
     int err_act = iApi.get_historical_data(
         9,
-        xtime::get_timestamp(4,12,2019, 20, 45),
-        xtime::get_timestamp(4,12,2019, 20, 45),
+        xtime::get_first_timestamp_minute(xtime::get_timestamp()) - xtime::SECONDS_IN_MINUTE,
+        xtime::get_first_timestamp_minute(xtime::get_timestamp()),
         new_candles,
         intrade_bar::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
         pricescale);
@@ -133,7 +133,7 @@ int main() {
 }
 
 int get_min_timestamp(
-        intrade_bar::IntradeBarApi &api,
+        intrade_bar::IntradeBarHttpApi &api,
         const uint32_t symbol,
         xtime::timestamp_t &min_timestamp) {
     /* получаем последнюю метку времени и послений год */
@@ -234,7 +234,7 @@ int get_min_timestamp(
 }
 
 int search_start_date_quotes(
-        intrade_bar::IntradeBarApi &api,
+        intrade_bar::IntradeBarHttpApi &api,
         const uint32_t symbol,
         xtime::timestamp_t &min_timestamp,
         std::function<void(const uint32_t day)> f) {
