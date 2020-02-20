@@ -56,7 +56,7 @@ int main() {
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << " " << xtime::get_str_date_time(timestamp)
                     << std::endl;
-                std::this_thread::sleep_for(std::chrono::milliseconds(150000));
+                //std::this_thread::sleep_for(std::chrono::milliseconds(150000));
             } else {
                 std::cout << "GBPAUD (new tick) error" << std::endl;
             }

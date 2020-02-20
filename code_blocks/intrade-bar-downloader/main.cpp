@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.10"
-#define PROGRAM_DATE    "18.02.2020"
+#define PROGRAM_VERSION "1.11"
+#define PROGRAM_DATE    "20.02.2020"
 
 using namespace std;
 
@@ -88,6 +88,7 @@ int main(int argc, char **argv) {
     bool is_use_current_day = true; // загружать текущий день
     bool is_only_broker_supported_currency_pairs = false; // Загружать только поддерживаемые брокером валютные пары
     uint32_t price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2;
+    uint32_t check_last_days = 0;
 
     std::string json_file;
     std::string path_store;
@@ -139,6 +140,9 @@ int main(int argc, char **argv) {
         } else
         if(key == "all_currency_pairs" || key == "acp") {
             is_only_broker_supported_currency_pairs = false;
+        } else
+        if(key == "check_last_days" || key == "cld") {
+            check_last_days = atoi(value.c_str());
         }
     })) {
         std::cerr << "Error! No parameters!" << std::endl;
@@ -197,6 +201,10 @@ int main(int argc, char **argv) {
             if(auth_json["only_broker_supported_currency_pairs"] != nullptr)
                 is_only_broker_supported_currency_pairs =
                     auth_json["only_broker_supported_currency_pairs"];
+
+            if(auth_json["check_last_days"] != nullptr) {
+                check_last_days = auth_json["check_last_days"];
+            }
         }
         catch (intrade_bar::json::parse_error &e) {
             std::cerr << "json parser error: " << std::string(e.what()) << std::endl;
@@ -259,11 +267,14 @@ int main(int argc, char **argv) {
     } else {
         std::cout << "download current day: false" << std::endl;
     }
-
+    if(check_last_days > 0) {
+        std::cout << "check last days: " << check_last_days << std::endl;
+    }
     std::cout << std::endl;
 
     /* получаем конечную дату загрузки */
-    xtime::timestamp_t timestamp = xtime::get_timestamp();
+    xtime::timestamp_t current_timestamp = xtime::get_timestamp();
+    xtime::timestamp_t timestamp = current_timestamp;
     if(!is_use_current_day) {
         timestamp = xtime::get_first_timestamp_day(timestamp) -
             xtime::SECONDS_IN_DAY;
@@ -338,6 +349,8 @@ int main(int argc, char **argv) {
 #endif
     std::cout << std::endl;
 
+
+    bool is_error_writing = false;
     /* скачиваем исторические данные котировок */
     for(uint32_t
         symbol = 0;
@@ -381,7 +394,7 @@ int main(int argc, char **argv) {
                     << " start date: " << xtime::get_str_date(xtime::get_first_timestamp_day(min_timestamp))
                     << " stop date: " << xtime::get_str_date(xtime::get_first_timestamp_day(timestamp))
                     << std::endl;
-            min_timestamp = max_timestamp;
+            min_timestamp = max_timestamp - check_last_days * xtime::SECONDS_IN_DAY;
             const xtime::timestamp_t stop_date = xtime::get_first_timestamp_day(timestamp);
             std::cout
                     << "download: " << intrade_bar_common::currency_pairs[symbol]
@@ -392,18 +405,26 @@ int main(int argc, char **argv) {
 
         /* непосредственно здесь уже проходимся по датам и скачиваем данные */
         const xtime::timestamp_t stop_date = xtime::get_first_timestamp_day(timestamp);
-        for(xtime::timestamp_t t = xtime::get_first_timestamp_day(min_timestamp); t <= stop_date; t += xtime::SECONDS_IN_DAY) {
+        for(xtime::timestamp_t t = xtime::get_first_timestamp_day(min_timestamp);
+            t <= stop_date;
+            t += xtime::SECONDS_IN_DAY) {
             /* пропускаем данные, которые нет смысла загружать повторно */
-            if(t < max_timestamp && hists[symbol]->check_timestamp(t)) continue;
+            //if(t < max_timestamp && hists[symbol]->check_timestamp(t)) continue;
+
             /* пропускаем выходной день, если указано его пропускать*/
             if(!is_use_day_off && xtime::is_day_off(t)) continue;
+
+            /* находим конечную метку времени загрузки данных */
+            const xtime::timestamp_t end_day_timestamp =
+                (t == stop_date && is_use_current_day) ? xtime::get_first_timestamp_minute(current_timestamp) :
+                t + xtime::SECONDS_IN_DAY - xtime::SECONDS_IN_MINUTE;
 
             /* теперь загружаем данные */
             std::vector<xquotes_common::Candle> candles;
             int err = iApi.get_historical_data(
                 symbol,
                 t,
-                t + xtime::SECONDS_IN_DAY - xtime::SECONDS_IN_MINUTE,
+                end_day_timestamp,
                 candles,
                 price_type,
                 intrade_bar_common::pricescale_currency_pairs[symbol]);
@@ -423,9 +444,10 @@ int main(int argc, char **argv) {
             for(size_t i = 0; i < candles.size(); ++i) {
                 bars_inside_day[xtime::get_minute_day(candles[i].timestamp)] = candles[i];
             }
+
             /* записываем данные */
-            err = hists[symbol]->write_candles(bars_inside_day, t);
             if(candles.size() > 0) {
+                err = hists[symbol]->write_candles(bars_inside_day, t);
                 intrade_bar::print_line(
                         "write " +
                         intrade_bar_common::currency_pairs[symbol] +
@@ -434,23 +456,62 @@ int main(int argc, char **argv) {
                         " - " + xtime::get_str_date_time(candles.back().timestamp) +
                         " code " +
                         std::to_string(err));
+                if(err != xquotes_common::OK) {
+                    std::cerr << std::endl << "error of writing, code: " <<
+                        std::to_string(err) << std::endl;
+                    is_error_writing = true;
+                    break; // Больше не пытаемся записовать
+                }
             } else {
                 intrade_bar::print_line(
-                        "write " +
+                        "skip " +
                         intrade_bar_common::currency_pairs[symbol] +
                         " " +
-                        xtime::get_str_date(t) +
-                        " code " +
-                        std::to_string(err));
+                        xtime::get_str_date(t));
             }
-        }
+
+            /* читаем данные и сравниваем */
+            if(candles.size() > 0 && check_last_days != 0) {
+                bool is_skip = false;
+                for(uint64_t m = 0; m < xtime::MINUTES_IN_DAY; ++m) {
+                    xquotes_common::Candle candle;
+                    /* адок пипсовщика, точность 1.5 КАРЛ!!! на самом деле так не должно быть.
+                     * После перезаписи точность вроде как 1.0, как и полахаетя
+                     */
+                    const double diff = 1.5/ intrade_bar_common::pricescale_currency_pairs[symbol];
+                    err = hists[symbol]->get_candle(candle, m * xtime::SECONDS_IN_MINUTE + t);
+                    if(std::abs(candle.close - bars_inside_day[m].close) > diff) {
+                        std::cerr << fixed;
+                        std::cerr.precision(6);
+                        std::cerr << std::endl
+                            << "error of compare price, code: " <<
+                            std::to_string(err) <<
+                            " c1: " << candle.close <<
+                            " c2: " << bars_inside_day[m].close <<
+                            " ps: " << intrade_bar_common::pricescale_currency_pairs[symbol] <<
+                            " t: " << xtime::get_str_date_time(m * xtime::SECONDS_IN_MINUTE + t) <<
+                            std::endl;
+
+                        //uint32_t ti = xquotes_common::convert_to_uint(bars_inside_day[m].close);
+                        //double td = xquotes_common::convert_to_double(ti);
+                        //std::cerr << "c: " << bars_inside_day[m].close << " ti " << ti << " td " << td << std::endl;
+
+                        is_error_writing = true;
+                        is_skip = true;
+                        break; // Больше не пытаемся записовать
+                    }
+                }
+                if(is_skip) break;
+            }
+        } // for t
         hists[symbol]->save();
-        std::cout
+        std::cout << std::endl
                 << "data writing to file completed: " << intrade_bar_common::currency_pairs[symbol]
                 << " " << xtime::get_str_date(xtime::get_first_timestamp_day(min_timestamp))
                 << " - " << xtime::get_str_date(xtime::get_first_timestamp_day(timestamp))
                 << std::endl << std::endl;
     } // for symbol
+    if(is_error_writing) return EXIT_FAILURE;
     return EXIT_SUCCESS;
 }
 

@@ -57,14 +57,15 @@ int main() {
         return -1;
     }
     std::cout << "pricescale " << pricescale << std::endl;
-#if(0)
+
+#if(1)
     /* пробуем скачать исторические данные */
     std::vector<xquotes_common::Candle> candles;
     clock_t start = clock();
     int err = iApi.get_historical_data(
         0,
-        xtime::get_timestamp(4,12,2018),
-        xtime::get_timestamp(4,12,2018) + xtime::SECONDS_IN_DAY - xtime::SECONDS_IN_MINUTE,
+        xtime::get_timestamp(18,2,2020,2),
+        xtime::get_timestamp(18,2,2020,3,59,59),
         candles,
         intrade_bar::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
         pricescale);
@@ -86,6 +87,7 @@ int main() {
     std::cout << "seconds: " << seconds << std::endl;
     std::cout << "pricescale: " << pricescale << std::endl;
     std::cout << "candles size: " << candles.size() << std::endl;
+    std::system("pause");
 #endif
 
     /* грузим актуальную дату */

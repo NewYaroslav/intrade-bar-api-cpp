@@ -1388,16 +1388,16 @@ namespace intrade_bar {
                         /* округлим цены */
                         candles[i].open =
                             (double)((uint64_t)(candles[i].open *
-                            (double)pricescale + 0.5)) / (double)pricescale;
+                            (double)pricescale + 0.5d)) / (double)pricescale;
                         candles[i].high =
                             (double)((uint64_t)(candles[i].high *
-                            (double)pricescale + 0.5)) / (double)pricescale;
+                            (double)pricescale + 0.5d)) / (double)pricescale;
                         candles[i].low =
                             (double)((uint64_t)(candles[i].low *
-                            (double)pricescale + 0.5)) / (double)pricescale;
+                            (double)pricescale + 0.5d)) / (double)pricescale;
                         candles[i].close =
                             (double)((uint64_t)(candles[i].close *
-                            (double)pricescale + 0.5)) / (double)pricescale;
+                            (double)pricescale + 0.5d)) / (double)pricescale;
                     }
                 } else
                 if(hist_type == FXCM_USE_HIST_QUOTES_BID) {
@@ -1420,7 +1420,20 @@ namespace intrade_bar {
                         candles[i].volume = (*it_candles)[i][9];
                     }
                 }
-            } catch(...) {
+            }
+            catch(json::parse_error &e) {
+                std::cerr << "IntradeBarHttpApi::get_historical_data, json parser error: " << std::string(e.what()) << std::endl;
+                //std::cerr << "response " << response << std::endl;
+                return JSON_PARSER_ERROR;
+            }
+            catch(std::exception e) {
+                std::cerr << "IntradeBarHttpApi::get_historical_data, json parser error: " << std::string(e.what()) << std::endl;
+                //std::cerr << "response " << response << std::endl;
+                return JSON_PARSER_ERROR;
+            }
+            catch(...) {
+                std::cerr << "IntradeBarHttpApi::get_historical_data, json parser error" << std::endl;
+                //std::cerr << "response " << response << std::endl;
                 return JSON_PARSER_ERROR;
             }
             if(candles.size() == 0) return DATA_NOT_AVAILABLE;
