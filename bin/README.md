@@ -68,13 +68,13 @@
 Пример снизу запишет файлы исторических данных в папку *../storage*, пропустит выходные дни и текущий день, а также использует цену *(bid+ask)/2*.
 
 ```
-intrade-bar-downloader-18.exe /use_day_off /use_current_day /price_type "(bid+ask)/2" /path_store "../storage"
+intrade-bar-downloader-113.exe /use_day_off /use_current_day /price_type "(bid+ask)/2" /path_store "../storage"
 ```
 
 ### Пример командной строки для задания настроек через файл JSON
 
 ```
-intrade-bar-downloader-18.exe /path_json_file "settings-intrade-bar-downloader.json"
+intrade-bar-downloader-113.exe /path_json_file "settings-intrade-bar-downloader.json"
 ```
 
 ### Пример файла JSON

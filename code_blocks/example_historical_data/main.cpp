@@ -27,26 +27,9 @@ int search_start_date_quotes(
 
 int main() {
     cout << "start intrade.bar api test!" << endl;
-    /* читаем файл с настройками */
-    std::ifstream auth_file("auth.json");
-    if(!auth_file) {
-        std::cout << "error opening settings file!" << std::endl;
-        return -1;
-    }
-    intrade_bar::json auth_json;
-    auth_file >> auth_json;
-    auth_file.close();
 
-    std::string email = auth_json["email"];
-    std::string password = auth_json["password"];
     /* подключаемся */
     intrade_bar::IntradeBarHttpApi iApi;
-    //int err_connect = iApi.connect(auth_json);
-    //int err_connect = iApi.connect(email, password);
-    //if(err_connect != 0) {
-    //    std::cout << "authorisation error!" << std::endl;
-   //     return -1;
-    //}
 
     /* пробуем получить параметры символа */
     std::cout << "get_symbol_parameters" << std::endl;
@@ -64,8 +47,8 @@ int main() {
     clock_t start = clock();
     int err = iApi.get_historical_data(
         0,
-        xtime::get_timestamp(18,2,2020,2),
-        xtime::get_timestamp(18,2,2020,3,59,59),
+        xtime::get_timestamp(17,2,2020,0),
+        xtime::get_timestamp(18,2,2020,23,59,00),
         candles,
         intrade_bar::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
         pricescale);

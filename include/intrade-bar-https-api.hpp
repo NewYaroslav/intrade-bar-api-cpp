@@ -1328,7 +1328,9 @@ namespace intrade_bar {
                 std::vector<xquotes_common::Candle> &candles,
                 const uint32_t hist_type = FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
                 const uint32_t pricescale = 100000) {
-            std::string url("https://intrade.bar/fxhistory/?symbol=");
+            // https://intrade.bar/getHistory.php?symbol=EUR/USD&resolution=1&from=1582491336&to=158251731
+            //std::string url("https://intrade.bar/fxhistory/?symbol=");
+            std::string url("https://intrade.bar/getHistory.php?symbol=");
             url += extended_name_currency_pairs[symbol_index];
             url += "&resolution=1&from=";
             url += std::to_string(date_start);
@@ -1423,17 +1425,17 @@ namespace intrade_bar {
             }
             catch(json::parse_error &e) {
                 std::cerr << "IntradeBarHttpApi::get_historical_data, json parser error: " << std::string(e.what()) << std::endl;
-                //std::cerr << "response " << response << std::endl;
+                std::cerr << "response " << response << std::endl;
                 return JSON_PARSER_ERROR;
             }
             catch(std::exception e) {
                 std::cerr << "IntradeBarHttpApi::get_historical_data, json parser error: " << std::string(e.what()) << std::endl;
-                //std::cerr << "response " << response << std::endl;
+                std::cerr << "response " << response << std::endl;
                 return JSON_PARSER_ERROR;
             }
             catch(...) {
                 std::cerr << "IntradeBarHttpApi::get_historical_data, json parser error" << std::endl;
-                //std::cerr << "response " << response << std::endl;
+                std::cerr << "response " << response << std::endl;
                 return JSON_PARSER_ERROR;
             }
             if(candles.size() == 0) return DATA_NOT_AVAILABLE;

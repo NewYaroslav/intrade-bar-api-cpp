@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.11"
-#define PROGRAM_DATE    "20.02.2020"
+#define PROGRAM_VERSION "1.13"
+#define PROGRAM_DATE    "24.02.2020"
 
 using namespace std;
 
@@ -472,6 +472,7 @@ int main(int argc, char **argv) {
 
             /* читаем данные и сравниваем */
             if(candles.size() > 0 && check_last_days != 0) {
+                hists[symbol]->save();
                 bool is_skip = false;
                 for(uint64_t m = 0; m < xtime::MINUTES_IN_DAY; ++m) {
                     xquotes_common::Candle candle;
