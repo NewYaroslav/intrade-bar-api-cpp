@@ -4,5 +4,5 @@
 	"use_day_off":true,
 	"only_broker_supported_currency_pairs":false,
 	"price_type":"(bid+ask)/2",
-	"check_last_days":0
+	"check_last_days":7
 }

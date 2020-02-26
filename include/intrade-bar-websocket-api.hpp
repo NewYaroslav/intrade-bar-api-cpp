@@ -79,6 +79,8 @@ namespace intrade_bar {
         std::atomic<double> offset_timestamp;                           /**< Смещение метки времени */
         std::atomic<bool> is_autoupdate_logger_offset_timestamp;
 
+        std::atomic<double> last_server_timestamp;
+
         /** \brief Обновить смещение метки времени
          *
          * Данный метод использует оптимизированное скользящее среднее
@@ -160,6 +162,7 @@ namespace intrade_bar {
                         /* получаем метку времени */
                         xtime::ftimestamp_t tick_time = j["Updated"];
                         tick_time /= 1000.0;
+                        last_server_timestamp = tick_time;
                         /* проверяем, не поменялась ли метка времени */
                         if(array_tick_price[it->second].second == tick_time) continue;
                         /* если метка времени поменялась, найдем время сервера */
@@ -278,11 +281,11 @@ namespace intrade_bar {
             offset_timestamp = 0;
             is_websocket_init = false;
             is_close_connection = false;
-            //is_close = false;
+
             is_error = false;
             is_autoupdate_logger_offset_timestamp = false;
+
             /* запустим соединение в отдельном потоке */
-            //client_thread = std::thread([&,sert_file] {
             client_future = std::async(std::launch::async,[&, sert_file]() {
                 const std::string point("mr-axiano.com/fxcm2/");
                 while(true) {
@@ -446,18 +449,7 @@ namespace intrade_bar {
             if(client_ptr) {
                 client_ptr->stop();
             }
-#if(0)
-            /* Существует проблема с циклом yield().
-             * Если поток, вызывающий деструктор, имеет более высокий приоритет, чем завершаемый поток,
-             * то ваш проект может вечно жить в однопроцессорной системе.
-             * Даже в многоядерной системе может быть большая задержка.
-             * https://coderoad.ru/7927773
-             */
-            while(!is_close) {
-                std::this_thread::yield();
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-#endif
+
             if(client_future.valid()) {
                 try {
                     client_future.wait();
@@ -501,10 +493,19 @@ namespace intrade_bar {
         /** \brief Получить метку времени сервера
          *
          * Данный метод возвращает метку времени сервера. Часовая зона: UTC/GMT
-         * \return метка времени сервера
+         * \return Метка времени сервера
          */
         inline xtime::ftimestamp_t get_server_timestamp() {
             return xtime::get_ftimestamp() + offset_timestamp;
+        }
+
+        /** \brief Получить последнюю метку времени сервера
+         *
+         * Данный метод возвращает последнюю полученную метку времени сервера. Часовая зона: UTC/GMT
+         * \return Метка времени сервера
+         */
+        inline xtime::ftimestamp_t get_last_server_timestamp() {
+            return last_server_timestamp;
         }
 
         /** \brief Получить смещение метки времени ПК

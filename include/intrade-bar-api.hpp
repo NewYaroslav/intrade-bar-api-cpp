@@ -82,6 +82,8 @@ namespace intrade_bar {
                     std::lock_guard<std::mutex> lock(candles_mutex);
                     candles[symbol_index] = raw_candles;
                 });
+                /* добавим задержку */
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
             for(uint32_t symbol_index = 0;
                 symbol_index < intrade_bar_common::CURRENCY_PAIRS;
@@ -201,10 +203,8 @@ namespace intrade_bar {
                     std::this_thread::yield();
                 });
             }
-            //std::cout << "start of historical data initialization" << std::endl;
 
             /* создаем поток обработки событий */
-            //std::thread stream_thread = std::thread([&,number_bars, callback] {
             callback_future = std::async(std::launch::async,[&, number_bars, callback]() {
                 /* сначала инициализируем исторические данные */
                 uint32_t hist_data_number_bars = number_bars;
@@ -273,7 +273,8 @@ namespace intrade_bar {
                     /* загрузка исторических данных и повторный вызов callback,
                      * если нужно
                      */
-                    server_ftimestamp = websocket_api.get_server_timestamp();
+                    //server_ftimestamp = websocket_api.get_server_timestamp();
+                    server_ftimestamp = websocket_api.get_last_server_timestamp();
                     timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
                     const uint64_t server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
                     if(server_minute <= last_minute) {
@@ -287,15 +288,10 @@ namespace intrade_bar {
 
                     for(uint64_t l = 0; l < number_new_bars; ++l) {
                         /* загружаем исторические данные в несколько потоков */
-                        //const xtime::timestamp_t download_date_timestamp =
-                        //    xtime::get_first_timestamp_minute(timestamp) -
-                        //    xtime::SECONDS_IN_MINUTE;
                         const xtime::timestamp_t download_date_timestamp =
                             (server_minute * xtime::SECONDS_IN_MINUTE) -
-                            //xtime::SECONDS_IN_MINUTE -
                             xtime::SECONDS_IN_MINUTE * (number_new_bars - l);
 
-                        //std::cout << "download_historical_data: " << xtime::get_str_date_time(download_date_timestamp) << std::endl;
                         std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
                         /* качаем два бара, так как один бар скачать не выйдет */
                         download_historical_data(array_candles, download_date_timestamp, 2);
@@ -308,7 +304,6 @@ namespace intrade_bar {
                         for(uint32_t symbol_index = 0;
                             symbol_index < intrade_bar_common::CURRENCY_PAIRS;
                             ++symbol_index) {
-                            //std::string symbol_name(intrade_bar_common::currency_pairs[symbol_index]);
                             real_candles[intrade_bar_common::currency_pairs[symbol_index]] = websocket_api.get_timestamp_candle(
                                 symbol_index,
                                 download_date_timestamp);
@@ -549,6 +544,31 @@ namespace intrade_bar {
                 candles[symbol_name] = websocket_api.get_timestamp_candle(symbol_index, timestamp);
             }
             return candles;
+        }
+
+        /** \brief Получить смещение метки времени ПК
+         * \return Смещение метки времени ПК
+         */
+        inline xtime::ftimestamp_t get_offset_timestamp() {
+            return websocket_api.get_offset_timestamp();
+        }
+
+        /** \brief Получить метку времени сервера
+         *
+         * Данный метод возвращает метку времени сервера. Часовая зона: UTC/GMT
+         * \return Метка времени сервера
+         */
+        inline xtime::ftimestamp_t get_server_timestamp() {
+            return websocket_api.get_server_timestamp();
+        }
+
+        /** \brief Получить последнюю метку времени сервера
+         *
+         * Данный метод возвращает последнюю полученную метку времени сервера. Часовая зона: UTC/GMT
+         * \return Метка времени сервера
+         */
+        inline xtime::ftimestamp_t get_last_server_timestamp() {
+            return websocket_api.get_last_server_timestamp();
         }
     };
 }
