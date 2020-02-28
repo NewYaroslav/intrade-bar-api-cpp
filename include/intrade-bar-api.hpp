@@ -206,6 +206,7 @@ namespace intrade_bar {
 
             /* создаем поток обработки событий */
             callback_future = std::async(std::launch::async,[&, number_bars, callback]() {
+
                 /* сначала инициализируем исторические данные */
                 uint32_t hist_data_number_bars = number_bars;
                 uint64_t last_minute = 0;
@@ -238,11 +239,8 @@ namespace intrade_bar {
 					std::this_thread::yield();
                 }
 
-                //std::cout << "start" << std::endl;
-
-                /* далее занимаемся получением новызх тиков */
+                /* далее занимаемся получением новых тиков */
                 xtime::timestamp_t last_timestamp = (xtime::timestamp_t)(websocket_api.get_server_timestamp() + 0.5);
-                //uint64_t last_minute = last_timestamp / xtime::SECONDS_IN_MINUTE;
                 while(!is_stop_command) {
                     xtime::ftimestamp_t server_ftimestamp = websocket_api.get_server_timestamp();
                     xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
@@ -255,7 +253,6 @@ namespace intrade_bar {
                     /* тут мы окажемся с началом новой секунды,
                      * собираем актуальные цены бара и вызываем callback
                      */
-
                     if((timestamp - last_timestamp) < xtime::SECONDS_IN_MINUTE) {
                         std::map<std::string,xquotes_common::Candle> candles;
                         for(uint32_t symbol_index = 0;
@@ -268,18 +265,26 @@ namespace intrade_bar {
                         /* вызов callback */
                         if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
                     }
-                    last_timestamp = timestamp;
 
-                    /* загрузка исторических данных и повторный вызов callback,
-                     * если нужно
+                    /* загрузка исторических данных и повторный вызов callback, если нужно
                      */
-                    //server_ftimestamp = websocket_api.get_server_timestamp();
-                    server_ftimestamp = websocket_api.get_last_server_timestamp();
+                    if(xtime::get_minute_day(last_timestamp) == xtime::get_minute_day(timestamp)) {
+                        last_timestamp = timestamp; // запоминаем последнюю метку времен
+                        continue;
+                    }
+                    last_timestamp = timestamp; // запоминаем последнюю метку времен
+
+                    server_ftimestamp = websocket_api.get_last_server_timestamp(); // получаем именно последнюю метку времени сервера, а не расчитанное время
                     timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
-                    const uint64_t server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
-                    if(server_minute <= last_minute) {
+                    uint64_t server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
+
+                    /* ожидаем, когда минута однозначно станет историческими данными */
+                    while(server_minute <= last_minute) {
                         std::this_thread::yield();
 						std::this_thread::sleep_for(std::chrono::milliseconds(1));
+						server_ftimestamp = websocket_api.get_last_server_timestamp(); // получаем именно последнюю метку времени сервера, а не расчитанное время
+                        timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
+						server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
                         continue;
                     }
 

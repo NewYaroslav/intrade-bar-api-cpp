@@ -48,7 +48,7 @@ int main() {
         /* получено событие НОВЫЙ ТИК */
         if(event == intrade_bar::IntradeBarApi::EventType::NEW_TICK) {
             std::cout << "new tick: " << xtime::get_str_date_time(timestamp) << "\r";
-            if(xtime::get_second_minute(timestamp) >= 58)
+            if(xtime::get_second_minute(timestamp) >= 58 || xtime::get_second_minute(timestamp) == 0)
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
                     << "GBPAUD tick close: " << candle.close

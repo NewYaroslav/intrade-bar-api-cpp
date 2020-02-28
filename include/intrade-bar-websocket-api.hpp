@@ -187,10 +187,15 @@ namespace intrade_bar {
                     }
                     catch(const json::parse_error& e) {
                         try {
+							std::string utf8line = response;
+                            fix_utf8_string(utf8line);
+							
                             json j;
+							j["src"] = "QuotationsStream::parser(const std::string &response)";
                             j["error"] = "json::parse_error";
                             j["what"] = e.what();
                             j["exception_id"] = e.id;
+							j["response"] = utf8line;
                             intrade_bar::Logger::log(file_name_websocket_log, j);
                             std::lock_guard<std::mutex> lock(error_message_mutex);
                             error_message = j.dump();
@@ -207,10 +212,15 @@ namespace intrade_bar {
                     }
                     catch(json::out_of_range& e) {
                         try {
+							std::string utf8line = response;
+                            fix_utf8_string(utf8line);
+							
                             json j;
+							j["src"] = "QuotationsStream::parser(const std::string &response)";
                             j["error"] = "json::out_of_range";
                             j["what"] = e.what();
                             j["exception_id"] = e.id;
+							j["response"] = utf8line;
                             intrade_bar::Logger::log(file_name_websocket_log, j);
                             std::lock_guard<std::mutex> lock(error_message_mutex);
                             error_message = j.dump();
@@ -227,10 +237,15 @@ namespace intrade_bar {
                     }
                     catch(json::type_error& e) {
                         try {
+							std::string utf8line = response;
+                            fix_utf8_string(utf8line);
+							
                             json j;
+							j["src"] = "QuotationsStream::parser(const std::string &response)";
                             j["error"] = "json::type_error";
                             j["what"] = e.what();
                             j["exception_id"] = e.id;
+							j["response"] = utf8line;
                             intrade_bar::Logger::log(file_name_websocket_log, j);
                             std::lock_guard<std::mutex> lock(error_message_mutex);
                             error_message = j.dump();
@@ -252,6 +267,7 @@ namespace intrade_bar {
                             std::string utf8line = response;
                             fix_utf8_string(utf8line);
                             json j;
+							j["src"] = "QuotationsStream::parser(const std::string &response)";
                             j["error"] = "unknown_parser_error";
                             j["response"] = utf8line;
                             intrade_bar::Logger::log(file_name_websocket_log, j);
@@ -310,6 +326,7 @@ namespace intrade_bar {
                             [&](std::shared_ptr<WssClient::Connection> connection) {
                             try {
                                 json j;
+								j["src"] = "QuotationsStream";
                                 j["action"] = "open_connection";
                                 intrade_bar::Logger::log(file_name_websocket_log, j);
                                 std::lock_guard<std::mutex> lock(error_message_mutex);
@@ -331,6 +348,7 @@ namespace intrade_bar {
                                 << std::endl;
                             try {
                                 json j;
+								j["src"] = "QuotationsStream";
                                 j["action"] = "close_connection";
                                 j["status_code"] = status;
                                 intrade_bar::Logger::log(file_name_websocket_log, j);
@@ -360,6 +378,7 @@ namespace intrade_bar {
                                 json j;
                                 std::ostringstream os;
                                 os << ec;
+								j["src"] = "QuotationsStream";
                                 j["error"] = "wss";
                                 j["error_code"] = os.str();
                                 //j["message"] = utf8line;
@@ -384,6 +403,7 @@ namespace intrade_bar {
                         is_websocket_init = false;
                         try {
                             json j;
+							j["src"] = "QuotationsStream";
                             j["error"] = "std::exception";
                             j["what"] = e.what();
                             intrade_bar::Logger::log(file_name_websocket_log, j);
@@ -405,6 +425,7 @@ namespace intrade_bar {
                         is_websocket_init = false;
                         try {
                             json j;
+							j["src"] = "QuotationsStream";
                             j["error"] = "unknown_error";
                             intrade_bar::Logger::log(file_name_websocket_log, j);
                             std::lock_guard<std::mutex> lock(error_message_mutex);
@@ -422,6 +443,7 @@ namespace intrade_bar {
                     if(is_close_connection) {
                         try {
                             json j;
+							j["src"] = "QuotationsStream";
                             j["action"] = "force_close_connection";
                             intrade_bar::Logger::log(file_name_websocket_log, j);
                             std::lock_guard<std::mutex> lock(error_message_mutex);

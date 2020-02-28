@@ -253,6 +253,7 @@ namespace intrade_bar {
         inline static void log(
                 const std::string &file_name,
                 const std::string &message) {
+            if(file_name.size() == 0) return;
             if(files.find(file_name) == files.end()) {
                 std::lock_guard<std::mutex> lock(files_mutex);
                 files[file_name].init(file_name);
@@ -267,6 +268,7 @@ namespace intrade_bar {
         inline static void log(
                 const std::string &file_name,
                 const json &obj) {
+            if(file_name.size() == 0) return;
             if(files.find(file_name) == files.end()) {
                 std::lock_guard<std::mutex> lock(files_mutex);
                 files[file_name].init(file_name);
@@ -281,6 +283,7 @@ namespace intrade_bar {
         inline static void log(
                 const std::string &file_name,
                 const intrade_bar_common::BinaryOption &bo) {
+            if(file_name.size() == 0) return;
             if(files.find(file_name) == files.end()) {
                 std::lock_guard<std::mutex> lock(files_mutex);
                 files[file_name].init(file_name);
