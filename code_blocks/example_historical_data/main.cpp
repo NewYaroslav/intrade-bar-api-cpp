@@ -47,13 +47,13 @@ int main() {
     clock_t start = clock();
     int err = iApi.get_historical_data(
         0,
-        xtime::get_timestamp(17,2,2020,0),
-        xtime::get_timestamp(18,2,2020,23,59,00),
+        xtime::get_timestamp(26,3,2020,0),
+        xtime::get_timestamp(26,3,2020,1,59,00),
         candles,
         intrade_bar::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
         pricescale);
     if(err != 0) {
-        std::cout << "error receiving historical data!" << std::endl;
+        std::cout << "error receiving historical data! " << err << std::endl;
         return -1;
     }
     clock_t end = clock();

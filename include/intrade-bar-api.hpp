@@ -261,7 +261,6 @@ namespace intrade_bar {
                             candles[intrade_bar_common::currency_pairs[symbol_index]] =
                                 websocket_api.get_timestamp_candle(symbol_index, timestamp);
                         }
-
                         /* вызов callback */
                         if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
                     }

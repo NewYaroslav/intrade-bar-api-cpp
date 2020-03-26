@@ -39,7 +39,6 @@
 				<Linker>
 					<Add library="../../lib/curl-7.60.0-win64-mingw/lib/libcurl.a" />
 					<Add library="../../lib/curl-7.60.0-win64-mingw/lib/libcurl.dll.a" />
-					<Add library="brotli" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/bin" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/include" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/lib" />

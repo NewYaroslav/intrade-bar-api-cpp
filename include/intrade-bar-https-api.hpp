@@ -1329,8 +1329,8 @@ namespace intrade_bar {
                 const uint32_t hist_type = FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
                 const uint32_t pricescale = 100000) {
             // https://intrade.bar/getHistory.php?symbol=EUR/USD&resolution=1&from=1582491336&to=158251731
-            //std::string url("https://intrade.bar/fxhistory/?symbol=");
-            std::string url("https://intrade.bar/getHistory.php?symbol=");
+            std::string url("https://intrade.bar/fxhistory/?symbol=");
+            //std::string url("https://intrade.bar/getHistory.php?symbol=");
             url += extended_name_currency_pairs[symbol_index];
             url += "&resolution=1&from=";
             url += std::to_string(date_start);
