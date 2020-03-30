@@ -26,7 +26,7 @@
 
 
 #include "intrade-bar-https-api.hpp"
-#include "intrade-bar-websocket-api.hpp"
+#include "intrade-bar-websocket-api-v2.hpp"
 #include <future>
 
 namespace intrade_bar {
