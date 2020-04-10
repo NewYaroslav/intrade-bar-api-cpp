@@ -1,2 +1,2 @@
-intrade-bar-downloader-114.exe /jf "settings-intrade-bar-downloader-114.json"
+intrade-bar-downloader-115.exe /jf "settings-intrade-bar-downloader-115.json"
 pause

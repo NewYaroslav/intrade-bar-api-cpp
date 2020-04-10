@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.14"
-#define PROGRAM_DATE    "26.03.2020"
+#define PROGRAM_VERSION "1.15"
+#define PROGRAM_DATE    "10.04.2020"
 
 using namespace std;
 
@@ -477,7 +477,7 @@ int main(int argc, char **argv) {
                 for(uint64_t m = 0; m < xtime::MINUTES_IN_DAY; ++m) {
                     xquotes_common::Candle candle;
                     /* адок пипсовщика, точность 1.5 КАРЛ!!! на самом деле так не должно быть.
-                     * После перезаписи точность вроде как 1.0, как и полахаетя
+                     * После перезаписи точность вроде как 1.0, как и полагается
                      */
                     const double diff = 1.5/ intrade_bar_common::pricescale_currency_pairs[symbol];
                     err = hists[symbol]->get_candle(candle, m * xtime::SECONDS_IN_MINUTE + t);

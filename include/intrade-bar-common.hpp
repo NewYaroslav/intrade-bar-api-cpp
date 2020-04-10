@@ -174,6 +174,7 @@ namespace intrade_bar_common {
         ALERT_RESPONSE = -12,               ///< Сервер брокера вернул предупреждение
         DATA_NOT_AVAILABLE = -13,           ///< Данные не доступны
         PARSER_ERROR = -14,                 ///< Ошибка парсера ответа от сервера
+        CURL_REQUEST_FAILED = -15,
     };
 
     /// Параметры счета

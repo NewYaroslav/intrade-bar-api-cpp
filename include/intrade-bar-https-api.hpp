@@ -423,6 +423,33 @@ namespace intrade_bar {
             CURLcode result = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
             if(result == CURLE_OK) {
+                long code;
+                result = curl_easy_getinfo(curl, CURLINFO_HTTP_CONNECTCODE, &code);
+                if(result != CURLE_OK) {
+                    return CURL_REQUEST_FAILED;
+                }
+                if(code != 200) {
+                    std::cout << "code " << code << std::endl;
+                    /* логируем ошибку */
+                    try {
+                        json j_work;
+                        j_work["error"] = "request failed";
+                        j_work["code"] = CONTENT_ENCODING_NOT_SUPPORT;
+                        j_work["status_code"] = code;
+                        j_work["method"] =
+                            "int post_request("
+                            "const std::string &url,"
+                            "const std::string &body,"
+                            "struct curl_slist *http_headers,"
+                            "std::string &response"
+                            "const bool is_clear_cookie = false,"
+                            "const int timeout = POST_STANDART_TIME_OUT)";
+                        intrade_bar::Logger::log(file_name_work_log, j_work);
+                    } catch(...) {
+
+                    }
+                    return CURL_REQUEST_FAILED;
+                }
                 if(content_encoding == USE_CONTENT_ENCODING_GZIP) {
                     if(buffer.size() == 0) return NO_ANSWER;
                     const char *compressed_pointer = buffer.data();
@@ -1329,7 +1356,8 @@ namespace intrade_bar {
                 const uint32_t hist_type = FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
                 const uint32_t pricescale = 100000) {
             // https://intrade.bar/getHistory.php?symbol=EUR/USD&resolution=1&from=1582491336&to=158251731
-            std::string url("https://intrade.bar/fxhistory/?symbol=");
+            //std::string url("https://intrade.bar/fxhistory/?symbol=");
+            std::string url("https://intrade.bar/fxhis/?symbol=");
             //std::string url("https://intrade.bar/getHistory.php?symbol=");
             url += extended_name_currency_pairs[symbol_index];
             url += "&resolution=1&from=";
@@ -1351,11 +1379,15 @@ namespace intrade_bar {
                     false,
                     false,
                     10);
-                if(err == OK) break;
+                if(err == OK && response.size() != 0) break;
                 /* ждем секунду умножить на количество попыток */
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000 * (a + 1)));
             }
             if(err != OK) return err;
+            if(response.size() == 0) {
+                //std::cout << "response size == 0, url: " << url << std::endl;
+                return DATA_NOT_AVAILABLE;
+            }
             //std::cout << "response " << response << std::endl;
             try {
                 json j = json::parse(response);

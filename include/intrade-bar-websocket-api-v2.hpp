@@ -438,10 +438,10 @@ namespace intrade_bar {
                             clients[s]->io_service = io_service;
                             clients[s]->start();
                         } // for s
-                        //std::cout << "run" << std::endl;
+
                         io_service->run();
                         is_websocket_init = false;
-                        //std::cout << "reset" << std::endl;
+
                         for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                             clients[s].reset();
                         }
@@ -558,9 +558,16 @@ namespace intrade_bar {
          * \return вернет true, если соединение есть, иначе произошла ошибка
          */
         inline bool wait() {
+            uint32_t tick = 0;
             while(!is_error && !is_websocket_init && !is_close_connection) {
 				std::this_thread::yield();
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                ++tick;
+                const uint32_t MAX_TICK = 10*100*5;
+                if(tick > MAX_TICK) {
+                    is_error = true;
+                    return is_websocket_init;
+                }
             }
             return is_websocket_init;
         }
