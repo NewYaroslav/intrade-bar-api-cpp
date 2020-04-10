@@ -57,7 +57,7 @@ int main() {
             }
 
 #if(0)
-            uint32_t api_id = 0;
+            uint64_t api_id = 0;
             api.open_bo("EURUSD", "test", 50, intrade_bar_common::BUY, 180, api_id);
             std::cout << "api_id " << api_id << std::endl;
 #endif

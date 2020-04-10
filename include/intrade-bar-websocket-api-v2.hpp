@@ -167,6 +167,8 @@ namespace intrade_bar {
 
                 /* проверяем, проинициализированы ли все валютные пары */
                 is_currency_pair_init[symbol_index] = true;
+                is_websocket_init = true;
+#               if(0)
                 if(!is_websocket_init) {
                     bool is_init = true;
                     for(size_t i = 0; i < is_currency_pair_init.size(); ++i) {
@@ -177,7 +179,7 @@ namespace intrade_bar {
                     }
                     if(is_init) is_websocket_init = true;
                 }
-
+#               endif
                 /* получаем метку времени */
                 xtime::ftimestamp_t tick_time = j["Updates"];
                 last_server_timestamp = tick_time;
@@ -222,14 +224,7 @@ namespace intrade_bar {
                     std::lock_guard<std::mutex> lock(error_message_mutex);
                     error_message = j.dump();
                 }
-                catch(...) {
-                    std::ostringstream os;
-                    os  << "{\"error\":\"json::parse_error\",\"what\":\"" << e.what()
-                        << "\",\"exception_id\":\"" << e.id << "\"}\n";
-                    std::lock_guard<std::mutex> lock(error_message_mutex);
-                    error_message = os.str();
-                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                }
+                catch(...) {}
                 is_error = true;
             }
             catch(json::out_of_range& e) {
@@ -247,14 +242,7 @@ namespace intrade_bar {
                     std::lock_guard<std::mutex> lock(error_message_mutex);
                     error_message = j.dump();
                 }
-                catch(...) {
-                    std::ostringstream os;
-                    os  << "{\"error\":\"json::out_of_range\",\"what\":\"" << e.what()
-                        << "\",\"exception_id\":\"" << e.id << "\"}\n";
-                    std::lock_guard<std::mutex> lock(error_message_mutex);
-                    error_message = os.str();
-                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                }
+                catch(...) {}
                 is_error = true;
             }
             catch(json::type_error& e) {
@@ -272,14 +260,7 @@ namespace intrade_bar {
                     std::lock_guard<std::mutex> lock(error_message_mutex);
                     error_message = j.dump();
                 }
-                catch(...) {
-                    std::ostringstream os;
-                    os  << "{\"error\":\"json::type_error\",\"what\":\"" << e.what()
-                        << "\",\"exception_id\":\"" << e.id << "\"}\n";
-                    std::lock_guard<std::mutex> lock(error_message_mutex);
-                    error_message = os.str();
-                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                }
+                catch(...) {}
                 is_error = true;
             }
             catch(...) {
@@ -293,11 +274,9 @@ namespace intrade_bar {
                     j["error"] = "unknown_parser_error";
                     j["response"] = utf8line;
                     intrade_bar::Logger::log(file_name_websocket_log, j);
+                    error_message = j.dump();
                 }
-                catch(...) {
-                    error_message = "unknown_parser_error";
-                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                }
+                catch(...) {}
                 is_error = true;
             }
         }
@@ -369,11 +348,7 @@ namespace intrade_bar {
                                     std::lock_guard<std::mutex> lock(error_message_mutex);
                                     error_message = j.dump();
                                 }
-                                catch(...) {
-                                    std::lock_guard<std::mutex> lock(error_message_mutex);
-                                    error_message = "{\"action\":\"open_connection\"}";
-                                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                                }
+                                catch(...) {}
                             };
 
                             clients[s]->on_close =
@@ -382,7 +357,6 @@ namespace intrade_bar {
                                 std::cerr << "intrade-bar: "
                                     "closed connection with status code " << status
                                     << std::endl;
-                                std::cout << "io_service->stop()" << std::endl;
                                 io_service->stop();
                                 try {
                                     json j;
@@ -393,15 +367,7 @@ namespace intrade_bar {
                                     std::lock_guard<std::mutex> lock(error_message_mutex);
                                     error_message = j.dump();
                                 }
-                                catch(...) {
-                                    std::ostringstream os;
-                                    os  << "{\"error\":\"closed_connection\",\"status_code\":"
-                                        << status
-                                        << "}";
-                                    std::lock_guard<std::mutex> lock(error_message_mutex);
-                                    error_message = os.str();
-                                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                                }
+                                catch(...) {}
                                 is_error = true;
                             };
 
@@ -420,25 +386,18 @@ namespace intrade_bar {
                                     j["function"] = "QuotationsStream";
                                     j["error"] = "wss";
                                     j["error_code"] = os.str();
-                                    //j["message"] = utf8line;
                                     intrade_bar::Logger::log(file_name_websocket_log, j);
                                     std::lock_guard<std::mutex> lock(error_message_mutex);
                                     error_message = j.dump();
                                 }
-                                catch(...) {
-                                    std::ostringstream os;
-                                    os  << "{\"error\":\"" << ec
-                                        << "\"}";
-                                    std::lock_guard<std::mutex> lock(error_message_mutex);
-                                    error_message = os.str();
-                                    intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                                }
+                                catch(...) {}
                                 is_error = true;
                             };
                             clients[s]->io_service = io_service;
                             clients[s]->start();
                         } // for s
 
+                        //std::cout << "io_service->run()" << std::endl;
                         io_service->run();
                         is_websocket_init = false;
 
@@ -456,15 +415,7 @@ namespace intrade_bar {
                             std::lock_guard<std::mutex> lock(error_message_mutex);
                             error_message = j.dump();
                         }
-                        catch(...) {
-                            std::ostringstream os;
-                            os  << "{\"error\":\"std::exception\",\"what\":\""
-                                << e.what()
-                                << "\"}";
-                            std::lock_guard<std::mutex> lock(error_message_mutex);
-                            error_message = os.str();
-                            intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                        }
+                        catch(...) {}
                         is_error = true;
                     }
                     catch (...) {
@@ -477,13 +428,7 @@ namespace intrade_bar {
                             std::lock_guard<std::mutex> lock(error_message_mutex);
                             error_message = j.dump();
                         }
-                        catch(...) {
-                            std::ostringstream os;
-                            os  << "{\"error\":\"unknown_error\"}";
-                            std::lock_guard<std::mutex> lock(error_message_mutex);
-                            error_message = os.str();
-                            intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                        }
+                        catch(...) {}
                         is_error = true;
                     }
                     if(is_close_connection) {
@@ -495,11 +440,7 @@ namespace intrade_bar {
                             std::lock_guard<std::mutex> lock(error_message_mutex);
                             error_message = j.dump();
                         }
-                        catch(...) {
-                            std::lock_guard<std::mutex> lock(error_message_mutex);
-                            error_message = "{\"action\":\"force_close_connection\"}";
-                            intrade_bar::Logger::log(file_name_websocket_log, error_message);
-                        }
+                        catch(...) {}
                         break;
                     }
 					std::this_thread::yield();
@@ -603,7 +544,9 @@ namespace intrade_bar {
          * \return Цена (bid+ask)/2
          */
         inline double get_price(const size_t symbol_index) {
-            if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init) return 0.0;
+            if(symbol_index >= CURRENCY_PAIRS ||
+                !is_websocket_init ||
+                !is_currency_pair_init[symbol_index]) return 0.0;
             return array_tick_price[symbol_index].first;
         }
 
@@ -615,8 +558,9 @@ namespace intrade_bar {
         inline xquotes_common::Candle get_candle(
                 const size_t symbol_index,
                 const size_t offset = 0) {
-            if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init)
-                return xquotes_common::Candle();
+            if(symbol_index >= CURRENCY_PAIRS ||
+                !is_websocket_init ||
+                !is_currency_pair_init[symbol_index]) return xquotes_common::Candle();
             std::lock_guard<std::mutex> lock(candles_mutex);
             const size_t array_candles_size =
                 array_candles[symbol_index].size();
@@ -629,7 +573,9 @@ namespace intrade_bar {
          * \param symbol_index Индекс символа
          */
         inline uint32_t get_num_candles(const size_t symbol_index) {
-            if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init) return 0;
+            if(symbol_index >= CURRENCY_PAIRS ||
+                !is_websocket_init ||
+                !is_currency_pair_init[symbol_index]) return 0;
             std::lock_guard<std::mutex> lock(candles_mutex);
             return array_candles[symbol_index].size();
         }
@@ -642,8 +588,9 @@ namespace intrade_bar {
         inline xquotes_common::Candle get_timestamp_candle(
                 const size_t symbol_index,
                 const xtime::timestamp_t timestamp) {
-            if(symbol_index >= CURRENCY_PAIRS || !is_websocket_init)
-                return xquotes_common::Candle();
+            if(symbol_index >= CURRENCY_PAIRS ||
+                !is_websocket_init ||
+                !is_currency_pair_init[symbol_index]) return xquotes_common::Candle();
             const xtime::timestamp_t first_timestamp =
                 xtime::get_first_timestamp_minute(timestamp);
             std::lock_guard<std::mutex> lock(candles_mutex);
@@ -659,8 +606,10 @@ namespace intrade_bar {
                     std::lock_guard<std::mutex> lock(price_mutex);
                     price = array_tick_price[symbol_index].first;
                 }
-                return xquotes_common::Candle(price, price, price, price,
-                    0, first_timestamp);
+                return xquotes_common::Candle(
+                    price, price, price, price,
+                    0,
+                    first_timestamp);
             }
             while(true) {
                 if(array_candles[symbol_index][index].timestamp == first_timestamp) {
@@ -746,6 +695,14 @@ namespace intrade_bar {
             is_error = false;
             std::lock_guard<std::mutex> _mutex(error_message_mutex);
             error_message.clear();
+        }
+
+        /** \brief Проверить инициализацию символа
+         * \param symbol_index Индекс символа
+         * \return вернет true, если поток символа обнаружен
+         */
+        inline bool check_init_symbol(const size_t symbol_index) {
+            return is_currency_pair_init[symbol_index];
         }
 
         /** \brief Получить текст сообщения об ошибке

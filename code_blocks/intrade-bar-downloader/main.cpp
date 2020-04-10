@@ -27,7 +27,7 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.15"
+#define PROGRAM_VERSION "1.16"
 #define PROGRAM_DATE    "10.04.2020"
 
 using namespace std;
@@ -372,7 +372,10 @@ int main(int argc, char **argv) {
             std::cout << "search for the starting date symbol: "
                 << intrade_bar_common::currency_pairs[symbol]
                 << "..." << std::endl;
-            err = iApi.search_start_date_quotes(symbol, min_timestamp, [&](const uint32_t day){
+            err = iApi.search_start_date_quotes(
+                    symbol,
+                    min_timestamp,
+                    [&](const uint32_t day){
                 intrade_bar::print_line(
                     "symbol: " +
                     intrade_bar_common::currency_pairs[symbol] +
@@ -510,6 +513,8 @@ int main(int argc, char **argv) {
                 << "data writing to file completed: " << intrade_bar_common::currency_pairs[symbol]
                 << " " << xtime::get_str_date(xtime::get_first_timestamp_day(min_timestamp))
                 << " - " << xtime::get_str_date(xtime::get_first_timestamp_day(timestamp))
+                << ", " << (symbol + 1)
+                << "/" << (intrade_bar_common::CURRENCY_PAIRS)
                 << std::endl << std::endl;
     } // for symbol
     if(is_error_writing) return EXIT_FAILURE;

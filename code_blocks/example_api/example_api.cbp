@@ -21,8 +21,10 @@
 				<Option type="1" />
 				<Option compiler="mingw_64_7_3_0" />
 				<Compiler>
-					<Add option="-O2" />
 					<Add option="-std=c++11" />
+					<Add option="-pg" />
+					<Add option="-Og" />
+					<Add option="-g" />
 					<Add option="-DINTRADE_BAR_API_ONLY_HTTP" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/bin" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/include" />
@@ -36,6 +38,10 @@
 					<Add directory="../../lib" />
 				</Compiler>
 				<Linker>
+					<Add option="-pg -lgmon" />
+					<Add option="-static-libstdc++" />
+					<Add option="-static-libgcc" />
+					<Add option="-static" />
 					<Add library="../../lib/curl-7.60.0-win64-mingw/lib/libcurl.a" />
 					<Add library="../../lib/curl-7.60.0-win64-mingw/lib/libcurl.dll.a" />
 					<Add directory="../../lib/curl-7.60.0-win64-mingw/bin" />

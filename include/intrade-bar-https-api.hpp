@@ -366,6 +366,7 @@ namespace intrade_bar {
             curl_easy_setopt(curl, CURLOPT_CAINFO, sert_file.c_str());
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
             curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
             if(is_post) curl_easy_setopt(curl, CURLOPT_POST, 1L);
             else curl_easy_setopt(curl, CURLOPT_POST, 0);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writer_callback);
@@ -423,25 +424,26 @@ namespace intrade_bar {
             CURLcode result = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
             if(result == CURLE_OK) {
-                long code;
-                result = curl_easy_getinfo(curl, CURLINFO_HTTP_CONNECTCODE, &code);
+#               if(0)
+                long status_code = 0;
+                result = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
                 if(result != CURLE_OK) {
                     return CURL_REQUEST_FAILED;
                 }
-                if(code != 200) {
-                    std::cout << "code " << code << std::endl;
+                if(status_code != 200) {
+                    std::cout << "status_code: " << status_code << ", buffer size: " << buffer.size() << std::endl;
                     /* логируем ошибку */
                     try {
                         json j_work;
                         j_work["error"] = "request failed";
                         j_work["code"] = CONTENT_ENCODING_NOT_SUPPORT;
-                        j_work["status_code"] = code;
+                        j_work["status_code"] = status_code;
                         j_work["method"] =
                             "int post_request("
                             "const std::string &url,"
                             "const std::string &body,"
                             "struct curl_slist *http_headers,"
-                            "std::string &response"
+                            "std::string &response,"
                             "const bool is_clear_cookie = false,"
                             "const int timeout = POST_STANDART_TIME_OUT)";
                         intrade_bar::Logger::log(file_name_work_log, j_work);
@@ -450,6 +452,7 @@ namespace intrade_bar {
                     }
                     return CURL_REQUEST_FAILED;
                 }
+#               endif
                 if(content_encoding == USE_CONTENT_ENCODING_GZIP) {
                     if(buffer.size() == 0) return NO_ANSWER;
                     const char *compressed_pointer = buffer.data();
@@ -469,14 +472,12 @@ namespace intrade_bar {
                             "const std::string &url,"
                             "const std::string &body,"
                             "struct curl_slist *http_headers,"
-                            "std::string &response"
+                            "std::string &response,"
                             "const bool is_clear_cookie = false,"
                             "const int timeout = POST_STANDART_TIME_OUT)";
                         j_work["response"] = buffer;
                         intrade_bar::Logger::log(file_name_work_log, j_work);
-                    } catch(...) {
-
-                    }
+                    } catch(...) {}
                     return CONTENT_ENCODING_NOT_SUPPORT;
                 } else {
                     response = buffer;
@@ -533,19 +534,21 @@ namespace intrade_bar {
                 } else
                 if(content_encoding == USE_CONTENT_ENCODING_NOT_SUPPORED) {
                     /* логируем ошибку */
-                    json j_work;
-                    j_work["error"] = "content encoding is not supported";
-                    j_work["code"] = CONTENT_ENCODING_NOT_SUPPORT;
-                    j_work["method"] =
-                        "int get_request("
-                        "const std::string &url,"
-                        "const std::string &body,"
-                        "struct curl_slist *http_headers,"
-                        "std::string &response,"
-                        "const bool is_clear_cookie = false,"
-                        "const int timeout = GET_QUOTES_HISTORY_TIME_OUT)";
-                    j_work["response"] = buffer;
-                    intrade_bar::Logger::log(file_name_work_log, j_work);
+                    try {
+                        json j_work;
+                        j_work["error"] = "content encoding is not supported";
+                        j_work["code"] = CONTENT_ENCODING_NOT_SUPPORT;
+                        j_work["method"] =
+                            "int get_request("
+                            "const std::string &url,"
+                            "const std::string &body,"
+                            "struct curl_slist *http_headers,"
+                            "std::string &response,"
+                            "const bool is_clear_cookie = false,"
+                            "const int timeout = GET_QUOTES_HISTORY_TIME_OUT)";
+                        j_work["response"] = buffer;
+                        intrade_bar::Logger::log(file_name_work_log, j_work);
+                    } catch(...){}
                     return CONTENT_ENCODING_NOT_SUPPORT;
                 } else {
                     response = buffer;
@@ -560,6 +563,22 @@ namespace intrade_bar {
          * Данный метод определяет тип счета (демо или реальный) и валюту счета
          */
         int parse_profile(const std::string &response) {
+            /* проверка на DDoS-GUARD */
+            const std::string ddos("DDoS-GUARD");
+            if(response.size() > 1 &&
+                response.find(ddos) != std::string::npos) {
+                /* логируем ошибку */
+                try {
+                    json j_work;
+                    j_work["error"] = "profile parser error";
+                    j_work["code"] = DDOS_GUARD_DETECTED;
+                    j_work["method"] = "int parse_profile(const std::string &response)";
+                    j_work["response"] = response;
+                    intrade_bar::Logger::log(file_name_work_log, j_work);
+                } catch(...){}
+                return DDOS_GUARD_DETECTED;
+            }
+
             /* промежуточные флаги парсера */
             bool _is_demo_account = false;
             bool _is_rub_currency = false;
@@ -610,12 +629,14 @@ namespace intrade_bar {
 
             if(!is_rub_currency_check || !is_demo_account_check) {
                 /* логируем ошибку */
-                json j_work;
-                j_work["error"] = "profile parser error";
-                j_work["code"] = PARSER_ERROR;
-                j_work["method"] = "int parse_profile(const std::string &response)";
-                j_work["response"] = response;
-                intrade_bar::Logger::log(file_name_work_log, j_work);
+                try {
+                    json j_work;
+                    j_work["error"] = "profile parser error";
+                    j_work["code"] = PARSER_ERROR;
+                    j_work["method"] = "int parse_profile(const std::string &response)";
+                    j_work["response"] = response;
+                    intrade_bar::Logger::log(file_name_work_log, j_work);
+                } catch(...) {}
                 return PARSER_ERROR;
             }
             is_demo_account = _is_demo_account;
@@ -654,6 +675,13 @@ namespace intrade_bar {
             std::string response;
             int err = post_request(url, body, http_headers_switch, response, false, false);
             if(err != OK) return err;
+
+            /* проверка на DDoS-GUARD */
+            const std::string ddos("DDoS-GUARD");
+            if(response.size() > 1 &&
+                response.find(ddos) != std::string::npos) {
+                return DDOS_GUARD_DETECTED;
+            }
 
             const char STR_RUB[] = u8"₽"; // Символ рубля
             const char STR_USD[] = u8"$"; // Символ доллара
@@ -939,10 +967,15 @@ namespace intrade_bar {
                 true,
                 false);
             if(err != OK) return err;
-            //std::cout << response << std::endl;
+            /* проверка на DDoS-GUARD */
+            const std::string ddos("DDoS-GUARD");
+            if(response.size() > 1 &&
+                response.find(ddos) != std::string::npos) {
+                return DDOS_GUARD_DETECTED;
+            }
+            //
             std::size_t error_pos = response.find("error");
             if(error_pos != std::string::npos) {
-                std::cout << response << std::endl;
                 return ERROR_RESPONSE;
             }
             // 75.3;1.82
@@ -974,41 +1007,45 @@ namespace intrade_bar {
                 std::function<void(const Bet &bet)> callback = nullptr) {
             if(!is_api_init) return AUTHORIZATION_ERROR;
             if(bets_counter >= (int)MAX_NUM_BET) {
-                json j_bet;
-                j_bet["error"] = "error opening binary option: exceeded the number of simultaneous bets!";
-                j_bet["code"] = BETTING_QUEUE_IS_FULL;
-                j_bet["symbol"] = symbol;
-                j_bet["note"] = note;
-                j_bet["bets_counter"] = (int)bets_counter;
-                j_bet["amount"] = amount;
-                j_bet["duration"] = duration;
-                intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                try {
+                    json j_bet;
+                    j_bet["error"] = "error opening binary option: exceeded the number of simultaneous bets!";
+                    j_bet["code"] = BETTING_QUEUE_IS_FULL;
+                    j_bet["symbol"] = symbol;
+                    j_bet["note"] = note;
+                    j_bet["bets_counter"] = (int)bets_counter;
+                    j_bet["amount"] = amount;
+                    j_bet["duration"] = duration;
+                    intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                } catch(...) {}
                 return BETTING_QUEUE_IS_FULL;
             }
             auto it = currency_pairs_indx.find(symbol);
             if(it == currency_pairs_indx.end()) {
-                json j_bet;
-                j_bet["error"] = "error opening binary option: broker does not support the specified currency pair!";
-                j_bet["code"] = INVALID_ARGUMENT;
-                j_bet["symbol"] = symbol;
-                j_bet["note"] = note;
-                j_bet["amount"] = amount;
-                j_bet["duration"] = duration;
-                intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                try {
+                    json j_bet;
+                    j_bet["error"] = "error opening binary option: broker does not support the specified currency pair!";
+                    j_bet["code"] = INVALID_ARGUMENT;
+                    j_bet["symbol"] = symbol;
+                    j_bet["note"] = note;
+                    j_bet["amount"] = amount;
+                    j_bet["duration"] = duration;
+                    intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                } catch(...) {}
                 return INVALID_ARGUMENT;
             }
             const uint32_t symbol_index = it->second;
             if(!is_currency_pairs[symbol_index]) {
-
-                json j_bet;
-                j_bet["error"] = "error opening binary option: broker does not support the specified currency pair!";
-                j_bet["code"] = INVALID_ARGUMENT;
-                j_bet["symbol"] = symbol;
-                j_bet["note"] = note;
-                j_bet["amount"] = amount;
-                j_bet["duration"] = duration;
-                intrade_bar::Logger::log(file_name_bets_log, j_bet);
-
+                try {
+                    json j_bet;
+                    j_bet["error"] = "error opening binary option: broker does not support the specified currency pair!";
+                    j_bet["code"] = INVALID_ARGUMENT;
+                    j_bet["symbol"] = symbol;
+                    j_bet["note"] = note;
+                    j_bet["amount"] = amount;
+                    j_bet["duration"] = duration;
+                    intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                } catch(...){}
                 return INVALID_ARGUMENT;
             }
 
@@ -1075,17 +1112,18 @@ namespace intrade_bar {
 
                     /* логируем ошибку открытия сделки */
                     if(err_sprint != OK) {
-                        json j_bet;
-                        j_bet["error"] = "error opening binary option";
-                        j_bet["code"] = err_sprint;
-                        j_bet["symbol"] = symbol;
-                        j_bet["note"] = note;
-                        j_bet["bets_counter"] = (int)bets_counter;
-                        j_bet["amount"] = amount;
-                        j_bet["duration"] = duration;
-                        j_bet["balance"] = get_balance();
-                        intrade_bar::Logger::log(file_name_bets_log, j_bet);
-
+                        try {
+                            json j_bet;
+                            j_bet["error"] = "error opening binary option";
+                            j_bet["code"] = err_sprint;
+                            j_bet["symbol"] = symbol;
+                            j_bet["note"] = note;
+                            j_bet["bets_counter"] = (int)bets_counter;
+                            j_bet["amount"] = amount;
+                            j_bet["duration"] = duration;
+                            j_bet["balance"] = get_balance();
+                            intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                        } catch(...){}
                         /* обновляем состояние сделки в массиве сделок */
                         {
                             std::lock_guard<std::mutex> lock(array_bets_mutex);
@@ -1142,31 +1180,35 @@ namespace intrade_bar {
 
                     if(err_balance != OK) {
                         /* логируем ошибку, если баланс невозможно узнать */
-                        json j_work;
-                        j_work["error"] = "balance request error";
-                        j_work["code"] = err_balance;
-                        j_work["method"] =  "int async_open_bo("
-                                            "const std::string &symbol,"
-                                            "const std::string &note,"
-                                            "const double amount,"
-                                            "const int contract_type,"
-                                            "const uint32_t duration)";
-                        intrade_bar::Logger::log(file_name_work_log, j_work);
+                        try {
+                            json j_work;
+                            j_work["error"] = "balance request error";
+                            j_work["code"] = err_balance;
+                            j_work["method"] =  "int async_open_bo("
+                                                "const std::string &symbol,"
+                                                "const std::string &note,"
+                                                "const double amount,"
+                                                "const int contract_type,"
+                                                "const uint32_t duration)";
+                            intrade_bar::Logger::log(file_name_work_log, j_work);
+                        } catch(...) {}
                     }
 
                     /* логируем открытие сделки */
-                    json j_bet;
-                    j_bet["symbol"] = symbol;
-                    j_bet["note"] = note;
-                    j_bet["bets_counter"] = (int)bets_counter;
-                    j_bet["id"] = id_deal;
-                    j_bet["amount"] = amount;
-                    j_bet["delay"] = delay;
-                    j_bet["open_timestamp"] = open_timestamp;
-                    j_bet["status"] = "open";
-                    j_bet["duration"] = duration;
-                    j_bet["balance"] = get_balance();
-                    intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                    try {
+                        json j_bet;
+                        j_bet["symbol"] = symbol;
+                        j_bet["note"] = note;
+                        j_bet["bets_counter"] = (int)bets_counter;
+                        j_bet["id"] = id_deal;
+                        j_bet["amount"] = amount;
+                        j_bet["delay"] = delay;
+                        j_bet["open_timestamp"] = open_timestamp;
+                        j_bet["status"] = "open";
+                        j_bet["duration"] = duration;
+                        j_bet["balance"] = get_balance();
+                        intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                    } catch(...){}
 
                     /* ждем в цикле, пока сделка не закроется */
                     while(!is_request_future_shutdown) {
@@ -1221,16 +1263,18 @@ namespace intrade_bar {
 
                             /* логируем ошибку, если невозможно узнать результат опциона */
                             if(err != OK) {
-                                json j_work;
-                                j_work["error"] = "binary option validation request error";
-                                j_work["code"] = err;
-                                j_work["method"] =  "int async_open_bo("
-                                                    "const std::string &symbol,"
-                                                    "const std::string &note,"
-                                                    "const double amount,"
-                                                    "const int contract_type,"
-                                                    "const uint32_t duration)";
-                                intrade_bar::Logger::log(file_name_work_log, j_work);
+                                try {
+                                    json j_work;
+                                    j_work["error"] = "binary option validation request error";
+                                    j_work["code"] = err;
+                                    j_work["method"] =  "int async_open_bo("
+                                                        "const std::string &symbol,"
+                                                        "const std::string &note,"
+                                                        "const double amount,"
+                                                        "const int contract_type,"
+                                                        "const uint32_t duration)";
+                                    intrade_bar::Logger::log(file_name_work_log, j_work);
+                                } catch(...){}
                                 break;
                             }
 
@@ -1238,39 +1282,41 @@ namespace intrade_bar {
                             int err_balance = request_balance();
 
                             /* логируем закрытие сделки */
-                            json j_bet;
-                            j_bet["symbol"] = symbol;
-                            j_bet["note"] = note;
-                            j_bet["bets_counter"] = (int)bets_counter;
-                            j_bet["id"] = id_deal;
-                            j_bet["amount"] = amount;
-                            j_bet["delay"] = delay;
-                            j_bet["open_timestamp"] = open_timestamp;
-                            j_bet["status"] = "close";
-                            j_bet["duration"] = duration;
-                            j_bet["profit"] = profit;
-                            if(profit > 0) {
-                                j_bet["result"] = "win";
-                            } else {
-                                j_bet["result"] = "loss";
-                            }
+                            try {
+                                json j_bet;
+                                j_bet["symbol"] = symbol;
+                                j_bet["note"] = note;
+                                j_bet["bets_counter"] = (int)bets_counter;
+                                j_bet["id"] = id_deal;
+                                j_bet["amount"] = amount;
+                                j_bet["delay"] = delay;
+                                j_bet["open_timestamp"] = open_timestamp;
+                                j_bet["status"] = "close";
+                                j_bet["duration"] = duration;
+                                j_bet["profit"] = profit;
+                                if(profit > 0) {
+                                    j_bet["result"] = "win";
+                                } else {
+                                    j_bet["result"] = "loss";
+                                }
 
-                            if(err_balance != OK) {
-                                /* логируем ошибку, если баланс невозможно узнать */
-                                json j_work;
-                                j_work["error"] = "balance request error";
-                                j_work["code"] = err_balance;
-                                j_work["method"] =  "int async_open_bo("
-                                                    "const std::string &symbol,"
-                                                    "const std::string &note,"
-                                                    "const double amount,"
-                                                    "const int contract_type,"
-                                                    "const uint32_t duration)";
-                                intrade_bar::Logger::log(file_name_work_log, j_work);
-                            } else {
-                                j_bet["balance"] = get_balance();
-                            }
-                            intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                                if(err_balance != OK) {
+                                    /* логируем ошибку, если баланс невозможно узнать */
+                                    json j_work;
+                                    j_work["error"] = "balance request error";
+                                    j_work["code"] = err_balance;
+                                    j_work["method"] =  "int async_open_bo("
+                                                        "const std::string &symbol,"
+                                                        "const std::string &note,"
+                                                        "const double amount,"
+                                                        "const int contract_type,"
+                                                        "const uint32_t duration)";
+                                    intrade_bar::Logger::log(file_name_work_log, j_work);
+                                } else {
+                                    j_bet["balance"] = get_balance();
+                                }
+                                intrade_bar::Logger::log(file_name_bets_log, j_bet);
+                            } catch(...){}
                             break;
                         }
                         std::this_thread::yield();
@@ -1346,7 +1392,11 @@ namespace intrade_bar {
         /** \brief Получить исторические данные минутного графика
          * \param symbol_index Индекс символа
          * \param date_start Дата начала
-         * \return date_stop Дата окончания
+         * \param date_stop Дата окончания
+         * \param candles Массив баров (полученные значения)
+         * \param hist_type Тип цены
+         * \param pricescale Множитель цены (зависит от количества знаков после запятой, обычно 100000 или 1000
+         * \return Код ошибки, 0 если ошибок нет
          */
         int get_historical_data(
                 const uint32_t symbol_index,
@@ -1364,12 +1414,15 @@ namespace intrade_bar {
             url += std::to_string(date_start);
             url += "&to=";
             url += std::to_string(date_stop);
+
             const std::string body;
+            const std::string ddos("DDoS-GUARD");
+
             std::string response;
 
             /* пробуем загрузить исторические данные несколько раз подряд */
             int err = OK;
-            const uint32_t attempts = 10;
+            const uint32_t attempts = 5;
             for(uint32_t a = 0; a < attempts; ++a) {
                 int err = get_request(
                     url,
@@ -1380,14 +1433,17 @@ namespace intrade_bar {
                     false,
                     10);
                 if(err == OK && response.size() != 0) break;
+                /* проверка на DDoS-GUARD */
+                if(response.size() > 1 &&
+                    response[0] != '{' &&
+                    response.find(ddos) != std::string::npos) {
+                    return DDOS_GUARD_DETECTED;
+                }
                 /* ждем секунду умножить на количество попыток */
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000 * (a + 1)));
             }
             if(err != OK) return err;
-            if(response.size() == 0) {
-                //std::cout << "response size == 0, url: " << url << std::endl;
-                return DATA_NOT_AVAILABLE;
-            }
+            if(response.size() == 0) return DATA_NOT_AVAILABLE;
             //std::cout << "response " << response << std::endl;
             try {
                 json j = json::parse(response);
@@ -1480,6 +1536,7 @@ namespace intrade_bar {
          * исторических данных котировок символа
          * \param symbol_index Индекс символа
          * \param start_date_timestamp Метка времени начала дня
+         * \param f лямбда-функция для обратного вызова
          * \return код ошибки
          */
         int search_start_date_quotes(
@@ -1496,12 +1553,12 @@ namespace intrade_bar {
             while(true) {
                 bool is_found = false;
                 /* проверяем наличие данных */
-                const uint32_t min_day = day >= 10 ? (day - 10) : 0;
-                for(uint32_t d = day; d > min_day; --d) {
+                const int32_t min_day = day >= 10 ? (day - 10) : 0;
+                for(int32_t d = day; d > min_day; --d) {
                     int err_hist = get_historical_data(
                         symbol_index,
-                        d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*12,
-                        d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*12,
+                        d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*10,
+                        d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*14,
                         candles,
                         FXCM_USE_HIST_QUOTES_BID);
                     if(err_hist == intrade_bar_common::OK) {
@@ -1512,14 +1569,15 @@ namespace intrade_bar {
                         break;
                     }
                 }
+
                 if(!is_found) {
                     const uint32_t max_day = (day + 10) <= all_days ?
                         (day + 10) : all_days;
                     for(uint32_t d = day; d < max_day; ++d) {
                         int err_hist = get_historical_data(
                             symbol_index,
-                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*12,
-                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*12,
+                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*10,
+                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*14,
                             candles,
                             FXCM_USE_HIST_QUOTES_BID);
                         if(err_hist == intrade_bar_common::OK) {
@@ -1764,16 +1822,18 @@ namespace intrade_bar {
             int err = post_request(url_login, body_login, http_headers_auth, response_login, true, true);
             if(err != OK) {
                 /* записываем лог *********************************************/
-                json j_work;
-                j_work["method"] = "int connect("
-                    "const std::string &email,"
-                    "const std::string &password)";
-                j_work["error"] = "post_request";
-                j_work["error_code"] = err;
-                std::string utf8line = response_login;
-                fix_utf8_string(utf8line);
-                j_work["response"] = utf8line;
-                intrade_bar::Logger::log(file_name_work_log, j_work);
+                try {
+                    json j_work;
+                    j_work["method"] = "int connect("
+                        "const std::string &email,"
+                        "const std::string &password)";
+                    j_work["error"] = "post_request";
+                    j_work["error_code"] = err;
+                    std::string utf8line = response_login;
+                    fix_utf8_string(utf8line);
+                    j_work["response"] = utf8line;
+                    intrade_bar::Logger::log(file_name_work_log, j_work);
+                } catch(...){}
                 /* ********************************************************** */
                 return err;
             }
@@ -1794,13 +1854,15 @@ namespace intrade_bar {
             is_api_init = true; // ставим флаг готовности к работе
 
             /* записываем лог *************************************************/
-            json j_work;
-            j_work["method"] =  "int connect("
-                "const std::string &email,"
-                "const std::string &password)";
-            j_work["action"] = "open_connection";
-            j_work["status_code"] = OK;
-            intrade_bar::Logger::log(file_name_work_log, j_work);
+            try {
+                json j_work;
+                j_work["method"] =  "int connect("
+                    "const std::string &email,"
+                    "const std::string &password)";
+                j_work["action"] = "open_connection";
+                j_work["status_code"] = OK;
+                intrade_bar::Logger::log(file_name_work_log, j_work);
+            } catch(...){}
             /* ************************************************************** */
             return OK;
         }

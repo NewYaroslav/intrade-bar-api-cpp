@@ -4,18 +4,20 @@
 using namespace std;
 
 int main() {
+    std::cout << "start" << std::endl;
     /* проверяем открытие и закрытие соединения, когда объект уничтожается */
     for(size_t i = 0; i < 3; ++i) {
+        std::cout << "connect " << i << std::endl;
         intrade_bar::QuotationsStream iQuotationsStream;
         if(iQuotationsStream.wait()) {
             std::cout << "intrade-bar: opened connection" << std::endl;
         } else {
             std::cout << "intrade-bar: error connection!" << std::endl;
-            std::cout << iQuotationsStream.get_error_message() << std::endl;
+            std::cout << "error_message: " << iQuotationsStream.get_error_message() << std::endl;
             return EXIT_FAILURE;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        std::cout << "reconnect " << i << std::endl;
+        std::cout << "reconnect " << std::endl;
     }
 
     /* создаем новое соединение */
@@ -48,7 +50,7 @@ int main() {
     }
 
     /* отображаем актуальный бар */
-    xtime::timestamp_t stop_timestamp = xtime::get_timestamp() + 10;
+    xtime::timestamp_t stop_timestamp = xtime::get_timestamp() + xtime::SECONDS_IN_MINUTE*5;
     while(true) {
         xquotes_common::Candle candle = iQuotationsStream.get_candle(symbol_index);
         std::cout
@@ -61,6 +63,18 @@ int main() {
             << " s: " << xtime::get_str_time_ms(
                 iQuotationsStream.get_server_timestamp())
             << "\r";
+
+        bool is_once = false;
+        for(size_t symbol = 0; symbol < intrade_bar_common::CURRENCY_PAIRS; ++symbol) {
+            if(!iQuotationsStream.check_init_symbol(symbol)) {
+                if(!is_once) {
+                    is_once = true;
+                    std::cout << std::endl;
+                }
+                std::cout << "not init " << intrade_bar_common::currency_pairs[symbol] << std::endl;
+            }
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if(xtime::get_timestamp() > stop_timestamp) {
             std::cout << "end of testing" << std::endl;
