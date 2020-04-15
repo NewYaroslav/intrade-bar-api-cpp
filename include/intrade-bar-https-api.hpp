@@ -1947,6 +1947,15 @@ namespace intrade_bar {
             }
         }
 
+        /** \brief Возвращает состояние соединения
+         *
+         * Данная функция подходит для проверки авторизации
+         * \return Вернет true, если соединение есть
+         */
+        inline bool connected() {
+            return is_api_init;
+        }
+
         /** \brief Конструктор с указанием всех файлов без авторизации
          * \param user_sert_file Файл-сертификат
          * \param user_cookie_file Файл для записи cookie

@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "1.16"
-#define PROGRAM_DATE    "10.04.2020"
+#define PROGRAM_VERSION "1.17"
+#define PROGRAM_DATE    "15.04.2020"
 
 using namespace std;
 
@@ -228,10 +228,12 @@ int main(int argc, char **argv) {
             return EXIT_FAILURE;
         }
         if(path_store.size() != 0) {
-            path_store = std::string(env_ptr) + "\\" + path_store;
+            path_store = std::string(env_ptr) + "/" + path_store;
         } else path_store = std::string(env_ptr);
-        sert_file = std::string(env_ptr) + "\\" + sert_file;
-        cookie_file = std::string(env_ptr) + "\\" + cookie_file;
+        sert_file = std::string(env_ptr) + "/" + sert_file;
+        cookie_file = std::string(env_ptr) + "/" + cookie_file;
+        file_name_bets_log = std::string(env_ptr) + "/" + file_name_bets_log;
+        file_name_work_log = std::string(env_ptr) + "/" + file_name_work_log;
     }
 
     /* проверяем настройки */

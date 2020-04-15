@@ -46,14 +46,21 @@ namespace intrade_bar {
              * \param output_list список полученных элементов
              */
             void parse_path(std::string path, std::vector<std::string> &output_list) {
-                if(path.back() != '/' && path.back() != '\\')
-                    path += "/";
+                if(path.back() != '/' && path.back() != '\\') path += "/";
                 std::size_t start_pos = 0;
                 while(true) {
-                    std::size_t found_beg = path.find_first_of("/\\", start_pos);
+                    std::size_t found_beg = path.find_first_of("/\\~", start_pos);
                     if(found_beg != std::string::npos) {
                         std::size_t len = found_beg - start_pos;
-                        if(len > 0) output_list.push_back(path.substr(start_pos, len));
+                        if(len > 0) {
+                            if(output_list.size() == 0 && path.size() > 3 && path.substr(0, 2) == "~/") {
+                                output_list.push_back(path.substr(0, 2));
+                            } else
+                            if(output_list.size() == 0 && path.size() > 2 && path.substr(0, 1) == "/") {
+                                output_list.push_back(path.substr(0, 1));
+                            }
+                            output_list.push_back(path.substr(start_pos, len));
+                        }
                         start_pos = found_beg + 1;
                     } else break;
                 }
@@ -66,9 +73,16 @@ namespace intrade_bar {
                 std::vector<std::string> dir_list;
                 parse_path(path, dir_list);
                 std::string name;
-                for(size_t i = 0; i < (dir_list.size() - 1); i++) {
-                    name += dir_list[i] + "\\";
-                    if(dir_list[i] == "..") continue;
+                for(size_t i = 0; i < dir_list.size() - 1; i++) {
+                    if(i > 0) name += dir_list[i] + "/";
+                    else if(i == 0 &&
+                        (dir_list[i] == "/" ||
+                        dir_list[i] == "~/")) {
+                        name += dir_list[i];
+                    } else name += dir_list[i] + "/";
+                    if(dir_list[i] == ".." ||
+                        dir_list[i] == "/" ||
+                        dir_list[i] == "~/") continue;
                     mkdir(name.c_str());
                 }
             }
