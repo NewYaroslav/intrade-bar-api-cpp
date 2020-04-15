@@ -349,6 +349,15 @@ namespace intrade_bar {
             }
         }
 
+        /** \brief Возвращает состояние соединения
+         *
+         * Данная функция подходит для проверки авторизации
+         * \return Вернет true, если соединение есть
+         */
+        inline bool connected() {
+            return http_api.connected();
+        }
+
         /** \brief Получить бар по имени
          *
          * \param symbol_name Имя валютной пары

@@ -7,7 +7,7 @@
 		<Option compiler="mingw_64_7_3_0" />
 		<Build>
 			<Target title="Release">
-				<Option output="../../bin/intrade-bar-downloader-116" prefix_auto="1" extension_auto="1" />
+				<Option output="../../bin/intrade-bar-downloader-117" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="mingw_64_7_3_0" />
@@ -57,6 +57,7 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="../../include/intrade-bar-api.hpp" />
 		<Unit filename="../../include/intrade-bar-common.hpp" />
 		<Unit filename="../../include/intrade-bar-https-api-log.hpp" />
 		<Unit filename="../../include/intrade-bar-https-api.hpp" />
