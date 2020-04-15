@@ -71,13 +71,18 @@ namespace intrade_bar {
                 ++symbol_index) {
                 array_thread[symbol_index] = std::thread([&,symbol_index] {
                     std::vector<xquotes_common::Candle> raw_candles;
-                    int err = http_api.get_historical_data(
-                        symbol_index,
-                        start_timestamp,
-                        stop_timestamp,
-                        raw_candles,
-                        intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
-                        intrade_bar_common::pricescale_currency_pairs[symbol_index]);
+                    int err = 0;
+                    for(uint32_t a = 0; a < 5; ++a) {
+                        err = http_api.get_historical_data(
+                            symbol_index,
+                            start_timestamp,
+                            stop_timestamp,
+                            raw_candles,
+                            intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
+                            intrade_bar_common::pricescale_currency_pairs[symbol_index]);
+                        if(err == OK) break;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1000 + a * 500));
+                    }
                     if(err != OK) return;
                     std::lock_guard<std::mutex> lock(candles_mutex);
                     candles[symbol_index] = raw_candles;
