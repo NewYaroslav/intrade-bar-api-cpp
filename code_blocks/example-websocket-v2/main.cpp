@@ -33,7 +33,7 @@ int main() {
     /* отображаем котировку, время ПК и время сервера где-то с минуту, потом выходим */
     xtime::ftimestamp_t start_timestamp = iQuotationsStream.get_server_timestamp();
 
-    const size_t symbol_index = 2;
+    const size_t symbol_index = 17; // AUDNZD
 
     while(true) {
 

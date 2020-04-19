@@ -38,9 +38,9 @@
 #include "utf8.h" // http://utfcpp.sourceforge.net/
 
 /*
-клиент иметь несколько конечных точек
-https://gitlab.com/eidheim/Simple-WebSocket-Server/-/issues/136
-*/
+ * клиент иметь несколько конечных точек
+ * https://gitlab.com/eidheim/Simple-WebSocket-Server/-/issues/136
+ */
 
 namespace intrade_bar {
     using namespace intrade_bar_common;
@@ -213,7 +213,7 @@ namespace intrade_bar {
                 /* читаем значение цены */
                 const double bid = j["bid"];
                 const double ask = j["ask"];
-                double price = (bid +  ask) / 2;
+                double price = (bid + ask) / 2;
 
                 /* округляем цену */
                 price = (double)(((uint64_t)((price *
