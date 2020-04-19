@@ -365,7 +365,8 @@ int main(int argc, char **argv) {
             !intrade_bar_common::is_currency_pairs[symbol]) continue;
 
         /* пробуем загрузить данные в несколько попыток */
-        for(uint32_t a = 0; a < 3; ++a) {
+        const uint32_t attempt_max = 3;
+        for(uint32_t a = 0; a < attempt_max; ++a) {
             std::string file_name =
                 path_store + "/" +
                 intrade_bar_common::currency_pairs[symbol] + ".qhs5";
@@ -438,24 +439,34 @@ int main(int argc, char **argv) {
                     t + xtime::SECONDS_IN_DAY - xtime::SECONDS_IN_MINUTE;
 
                 /* теперь загружаем данные */
+                bool is_error_receiving = false;
                 std::vector<xquotes_common::Candle> candles;
-                int err = iApi.get_historical_data(
-                    symbol,
-                    t,
-                    end_day_timestamp,
-                    candles,
-                    price_type,
-                    intrade_bar_common::pricescale_currency_pairs[symbol]);
-                if(err != intrade_bar_common::OK) {
-                    intrade_bar::print_line(
-                        "error receiving data " +
-                        intrade_bar_common::currency_pairs[symbol] +
-                        " " +
-                        xtime::get_str_date(t) +
-                        " code " +
-                        std::to_string(err));
-                    continue;
+                for(uint32_t ah = 0; ah < attempt_max; ++ah) {
+                    int err = iApi.get_historical_data(
+                        symbol,
+                        t,
+                        end_day_timestamp,
+                        candles,
+                        price_type,
+                        intrade_bar_common::pricescale_currency_pairs[symbol]);
+                    if(err != intrade_bar_common::OK) {
+                        intrade_bar::print_line(
+                            "error receiving data " +
+                            intrade_bar_common::currency_pairs[symbol] +
+                            " " +
+                            xtime::get_str_date(t) +
+                            " code " +
+                            std::to_string(err));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                        is_error_receiving = true;
+                        continue;
+                    }
+                    is_error_receiving = false;
+                    break;
                 }
+
+                /* если данные не удалось загрузить, выходим */
+                if(is_error_receiving) continue;
 
                 /* подготавливаем данные */
                 std::array<xquotes_common::Candle, xtime::MINUTES_IN_DAY> bars_inside_day;
@@ -530,6 +541,7 @@ int main(int argc, char **argv) {
                     << ", " << (symbol + 1)
                     << "/" << (intrade_bar_common::CURRENCY_PAIRS)
                     << std::endl << std::endl;
+                is_error_writing = false;
                 continue;
             }
             std::cout << std::endl

@@ -166,6 +166,7 @@ namespace intrade_bar {
          * \param user_bets_log_file Файл для записи логов работы со сделками
          * \param user_work_log_file Файл для записи логов работы http клиента
          * \param user_websocket_log_file Файл для записи логов вебсокета
+         * \param is_open_equal_close Флаг, по умолчанию true. Если флаг включен, то цена открытия бара равна цене закрытия предыдущего бара
          */
         IntradeBarApi(
                 const uint32_t number_bars = 1440,
@@ -178,9 +179,13 @@ namespace intrade_bar {
                 const std::string &user_cookie_file = "intrade-bar.cookie",
                 const std::string &user_bets_log_file = "logger/intrade-bar-bets.log",
                 const std::string &user_work_log_file = "logger/intrade-bar-https-work.log",
-                const std::string &user_websocket_log_file = "logger/intrade-bar-websocket.log") :
+                const std::string &user_websocket_log_file = "logger/intrade-bar-websocket.log",
+                const bool is_open_equal_close = true) :
                 http_api(user_sert_file, user_cookie_file, user_bets_log_file, user_work_log_file),
                 websocket_api(user_sert_file, user_websocket_log_file) {
+
+            /* установим настройки цены открытия */
+            websocket_api.set_option_open_price(is_open_equal_close);
 
             /* инициализация флагов и прочих переменных */
             is_stop_command = false;
@@ -587,6 +592,17 @@ namespace intrade_bar {
          */
         inline xtime::ftimestamp_t get_last_server_timestamp() {
             return websocket_api.get_last_server_timestamp();
+        }
+
+        /** \brief Установаить опцию по настройке цене открытия
+         *
+         * Данная опция включает или отключает равенство цены открытия бара цене закрытия предыдущего бара.
+         * Если опция установлена, то цена открытия равна цене закрытия предыдущего бара.
+         * Иначе цена открытия равна первому тику бара.
+         * \param is_enable Если указать true,
+         */
+        inline void set_option_open_price(const bool is_enable) {
+            websocket_api.set_option_open_price(is_enable);
         }
     };
 }

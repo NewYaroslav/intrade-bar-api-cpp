@@ -68,7 +68,7 @@ namespace intrade_bar {
         std::atomic<bool> is_websocket_init;    /**< Состояние соединения */
         std::atomic<bool> is_error;             /**< Ошибка соединения */
         std::atomic<bool> is_close_connection;  /**< Флаг для закрытия соединения */
-        //std::atomic<bool> is_close;
+        std::atomic<bool> is_open_equal_close;  /**< Если флаг установлен, цена открытия будет равна цене закрытия предыдущего бара */
 
         typedef std::pair<double,xtime::ftimestamp_t> tick_price;                       /**< Тип для хранения тика (с учетом (bid+ask)/2) */
         std::array<tick_price, CURRENCY_PAIRS> array_tick_price;                        /**< Массив для хранение всех тиков */
@@ -129,18 +129,36 @@ namespace intrade_bar {
                     (xtime::timestamp_t)timestamp);
             std::lock_guard<std::mutex> lock(candles_mutex);
             /* проверяем, пуст ли массив */
-            if(array_candles[symbol_index].size() == 0 ||
-                    array_candles[symbol_index].back().timestamp <
-                    minute_timestamp) {
+            if (array_candles[symbol_index].size() == 0 ||
+                (!is_open_equal_close &&
+                array_candles[symbol_index].back().timestamp < minute_timestamp)) {
                 /* просто добавляем свечу */
                 array_candles[symbol_index].push_back(
                     xquotes_common::Candle(
                         price,price,price,price,0,
                         minute_timestamp));
             } else
+            /* если цена открытия должна быть равна цене закрытия предыдущего бара */
+            if (is_open_equal_close &&
+                array_candles[symbol_index].size() > 0 &&
+                array_candles[symbol_index].back().timestamp < minute_timestamp) {
+                const double close = array_candles[symbol_index].back().close;
+                /* добавляем свечу с ценой закрытия предыдущей свечи*/
+                array_candles[symbol_index].push_back(
+                    xquotes_common::Candle(
+                        close,close,close,close,0,
+                        minute_timestamp));
+                /* обновим цены high, low, close */
+                if(array_candles[symbol_index].back().high < price) {
+                    array_candles[symbol_index].back().high = price;
+                } else
+                if(array_candles[symbol_index].back().low > price) {
+                    array_candles[symbol_index].back().low = price;
+                }
+                array_candles[symbol_index].back().close = price;
+            } else
             /* массив уже что-то содержит и последний бар - текущий бар */
-            if(array_candles[symbol_index].back().timestamp ==
-                    minute_timestamp) {
+            if (array_candles[symbol_index].back().timestamp == minute_timestamp) {
                 if(array_candles[symbol_index].back().high < price) {
                     array_candles[symbol_index].back().high = price;
                 } else
@@ -297,6 +315,10 @@ namespace intrade_bar {
             is_close_connection = false;
             is_error = false;
             is_autoupdate_logger_offset_timestamp = false;
+            /* по умолчанию цена открытия будет равна цене закрытия
+             * чтобы соответствовать цене исторических баров от поставщика FXCM
+             */
+            is_open_equal_close = true;
 
             for(size_t i = 0; i < is_currency_pair_init.size(); ++i) {
                 is_currency_pair_init[i] = false;
@@ -713,6 +735,18 @@ namespace intrade_bar {
             if(is_error) return error_message;
             return std::string();
         }
+
+        /** \brief Установаить опцию по настройке цене открытия
+         *
+         * Данная опция включает или отключает равенство цены открытия бара цене закрытия предыдущего бара.
+         * Если опция установлена, то цена открытия равна цене закрытия предыдущего бара.
+         * Иначе цена открытия равна первому тику бара.
+         * \param is_enable Если указать true,
+         */
+        inline void set_option_open_price(const bool is_enable) {
+            is_open_equal_close = is_enable;
+        }
+
     };
 }
 
