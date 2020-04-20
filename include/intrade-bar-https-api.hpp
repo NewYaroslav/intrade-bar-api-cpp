@@ -1396,6 +1396,8 @@ namespace intrade_bar {
          * \param candles Массив баров (полученные значения)
          * \param hist_type Тип цены
          * \param pricescale Множитель цены (зависит от количества знаков после запятой, обычно 100000 или 1000
+         * \param attempts Количество попыток
+         * \param timeout Время ожидания
          * \return Код ошибки, 0 если ошибок нет
          */
         int get_historical_data(
@@ -1404,7 +1406,9 @@ namespace intrade_bar {
                 const xtime::timestamp_t date_stop,
                 std::vector<xquotes_common::Candle> &candles,
                 const uint32_t hist_type = FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
-                const uint32_t pricescale = 100000) {
+                const uint32_t pricescale = 100000,
+                const uint32_t attempts = 5,
+                const uint32_t timeout = 10) {
             // https://intrade.bar/getHistory.php?symbol=EUR/USD&resolution=1&from=1582491336&to=158251731
             //std::string url("https://intrade.bar/fxhistory/?symbol=");
             std::string url("https://intrade.bar/fxhis/?symbol=");
@@ -1422,7 +1426,6 @@ namespace intrade_bar {
 
             /* пробуем загрузить исторические данные несколько раз подряд */
             int err = OK;
-            const uint32_t attempts = 5;
             for(uint32_t a = 0; a < attempts; ++a) {
                 int err = get_request(
                     url,
@@ -1431,7 +1434,7 @@ namespace intrade_bar {
                     response,
                     false,
                     false,
-                    10);
+                    timeout);
                 if(err == OK && response.size() != 0) break;
                 /* проверка на DDoS-GUARD */
                 if(response.size() > 1 &&
@@ -1545,7 +1548,7 @@ namespace intrade_bar {
                 std::function<void(const uint32_t day)> f = nullptr) {
             const uint32_t all_days = xtime::get_day(xtime::get_timestamp());
             uint32_t stop_day = all_days; // конечный день поиска
-            uint32_t start_day = 0;       // начальный день поиска
+            uint32_t start_day = 0; // начальный день поиска
             uint32_t day = all_days/2;
             uint32_t day_counter = 0;
 
@@ -1556,11 +1559,19 @@ namespace intrade_bar {
                 const int32_t min_day = day >= 10 ? (day - 10) : 0;
                 for(int32_t d = day; d > min_day; --d) {
                     int err_hist = get_historical_data(
-                        symbol_index,
-                        d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*10,
-                        d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*14,
-                        candles,
-                        FXCM_USE_HIST_QUOTES_BID);
+                            symbol_index,
+                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*11,
+                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*13,
+                            candles,
+                            FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
+                            100000,
+                            2,
+                            2);
+                    //std::cout << "!symbol: "
+                    //        << intrade_bar_common::currency_pairs[symbol_index]
+                    //        << " start date: "
+                    //        << xtime::get_str_date(d * xtime::SECONDS_IN_DAY)
+                    //        << " err " << err_hist << std::endl;
                     if(err_hist == intrade_bar_common::OK) {
                         day = d;
                         if(f != nullptr) f(day);
@@ -1575,11 +1586,19 @@ namespace intrade_bar {
                         (day + 10) : all_days;
                     for(uint32_t d = day; d < max_day; ++d) {
                         int err_hist = get_historical_data(
-                            symbol_index,
-                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*10,
-                            d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*14,
-                            candles,
-                            FXCM_USE_HIST_QUOTES_BID);
+                                symbol_index,
+                                d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*11,
+                                d*xtime::SECONDS_IN_DAY + xtime::SECONDS_IN_HOUR*13,
+                                candles,
+                                FXCM_USE_HIST_QUOTES_BID_ASK_DIV2,
+                                100000,
+                                2,
+                                2);
+                        //std::cout << "!!symbol: "
+                        //    << intrade_bar_common::currency_pairs[symbol_index]
+                        //    << " start date: "
+                        //    << xtime::get_str_date(d * xtime::SECONDS_IN_DAY)
+                        //    << " err " << err_hist << std::endl;
                         if(err_hist == intrade_bar_common::OK) {
                             day = d;
                             if(f != nullptr) f(day);
@@ -1606,6 +1625,7 @@ namespace intrade_bar {
                     stop_day = day;
                 }
                 day = (start_day + stop_day) / 2;
+                if(f != nullptr) f(day);
             }
             return intrade_bar_common::DATA_NOT_AVAILABLE;
         }

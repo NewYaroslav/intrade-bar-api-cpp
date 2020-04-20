@@ -25,7 +25,7 @@ int main() {
     auth_file >> auth_json;
     auth_file.close();
 
-    const uint32_t number_bars = 100;
+    const uint32_t number_bars = 1440 + 60;
     intrade_bar::IntradeBarApi api(number_bars,[&](
                     const std::map<std::string,xquotes_common::Candle> &candles,
                     const intrade_bar::IntradeBarApi::EventType event,

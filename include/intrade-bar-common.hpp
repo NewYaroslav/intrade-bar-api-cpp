@@ -149,6 +149,36 @@ namespace intrade_bar_common {
          * (валютные пары с JPY имеют множитель 1000)
          */
 
+    const std::array<xtime::timestamp_t, CURRENCY_PAIRS>
+        start_date_currency_pairs = {
+            xtime::get_timestamp(3,12,2001), // EURUSD
+            xtime::get_timestamp(3,12,2001),
+            xtime::get_timestamp(3,12,2001),
+            xtime::get_timestamp(3,12,2001),
+            xtime::get_timestamp(4,12,2001), // USDCAD
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(14,12,2001),
+            xtime::get_timestamp(4,12,2001),
+            xtime::get_timestamp(1,2,2002),
+            xtime::get_timestamp(6,12,2001),
+            xtime::get_timestamp(28,11,2001),
+            xtime::get_timestamp(28,11,2001),
+            xtime::get_timestamp(3,12,2001),
+            xtime::get_timestamp(30,11,2001),
+            xtime::get_timestamp(30,7,2003),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(30,11,2001),
+            xtime::get_timestamp(31,3,2008),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(30,11,2001),
+            xtime::get_timestamp(29,11,2001),
+            xtime::get_timestamp(28,9,2009),
+        };
+
     /// Варнианты сделок
     enum BoType {
         BUY = 1,    ///< Сделка на повышение курса
