@@ -9,6 +9,69 @@ C++ header-only api для работы с брокером [intrade.bar](https:
 
 **На данный момент библиотека находится в разработке**
 
+## Пример программ
+
+Данный код после подключения выведет на экран исторические данные баров символа AUDCAD и после этого будет показывать текущие цены.
+**Тик 0-вой секунды передает данные предыдущего бара, а не нового, это может быть полезно для торговли по цене закрытия**
+
+```C++
+#include <iostream>
+#include <fstream>
+#include "intrade-bar-api.hpp"
+
+int main() {
+    std::cout << "start intrade.bar api test!" << std::endl;
+
+    std::ifstream auth_file("auth.json");
+    if(!auth_file) return -1;
+    intrade_bar::json auth_json;
+    auth_file >> auth_json;
+    auth_file.close();
+
+    const uint32_t number_bars = 1440 + 60;
+    intrade_bar::IntradeBarApi api(number_bars,[&](
+                    const std::map<std::string,xquotes_common::Candle> &candles,
+                    const intrade_bar::IntradeBarApi::EventType event,
+                    const xtime::timestamp_t timestamp) {
+        /* получаем бар по валютной паре GBPCAD из candles */
+        xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("AUDCAD", candles);
+        /* получено событие ПОЛУЧЕНЫ ИСТОРИЧЕСКИЕ ДАННЫЕ */
+        if(event == intrade_bar::IntradeBarApi::EventType::HISTORICAL_DATA_RECEIVED) {
+            std::cout << "history : " << xtime::get_str_date_time(timestamp);// << std::endl;
+            if(intrade_bar::IntradeBarApi::check_candle(candle)) {
+                std::cout
+                    << " AUDCAD close: " << candle.close
+                    << " v: " << candle.volume
+                    << " t: " << xtime::get_str_date_time(candle.timestamp)
+                    << std::endl;
+            } else {
+                std::cout << " AUDCAD error" << std::endl;
+            }
+        } else
+        /* получено событие НОВЫЙ ТИК */
+        if(event == intrade_bar::IntradeBarApi::EventType::NEW_TICK) {
+            std::cout << "new tick: " << xtime::get_str_date_time(timestamp) << "\r";
+            if(xtime::get_second_minute(timestamp) >= 58 || xtime::get_second_minute(timestamp) == 0)
+            if(intrade_bar::IntradeBarApi::check_candle(candle)) {
+                std::cout
+                    << "AUDCAD tick close: " << candle.close
+                    << " v: " << candle.volume
+                    << " t: " << xtime::get_str_date_time(candle.timestamp)
+                    << " " << xtime::get_str_date_time(timestamp)
+                    << std::endl;
+                //std::this_thread::sleep_for(std::chrono::milliseconds(150000));
+            } else {
+                std::cout << "AUDCAD (new tick) error" << std::endl;
+            }
+        }
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    return 0;
+}
+
+```
+
 ## Вспомогательные программы
 
 ### Загрузка исторических данных котировок

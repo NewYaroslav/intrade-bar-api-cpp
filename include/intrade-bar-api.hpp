@@ -143,15 +143,16 @@ namespace intrade_bar {
                 auto it_src = candles_src.find(symbols[symbol]);
                 auto it_add = candles_add.find(symbols[symbol]);
                 if(it_src == candles_src.end() && it_add == candles_add.end()) continue;
-                if(it_src->second.timestamp != it_add->second.timestamp) continue;
                 output_candles[symbols[symbol]] = it_src->second;
+                if(it_add == candles_add.end()) continue;
+                if(it_src->second.timestamp != it_add->second.timestamp) continue;
                 auto it_new = output_candles.find(symbols[symbol]);
                 it_new->second.close = it_src->second.close != 0.0 ? it_src->second.close : it_add->second.close != 0.0 ? it_add->second.close : 0.0;
                 it_new->second.high = it_src->second.high != 0.0 ? it_src->second.high : it_add->second.high != 0.0 ? it_add->second.high : 0.0;
                 it_new->second.low = it_src->second.low != 0.0 ? it_src->second.low : it_add->second.low != 0.0 ? it_add->second.low : 0.0;
                 it_new->second.open = it_src->second.open != 0.0 ? it_src->second.open : it_add->second.open != 0.0 ? it_add->second.open : 0.0;
                 it_new->second.volume = it_src->second.volume != 0.0 ? it_src->second.volume : it_add->second.volume != 0.0 ? it_add->second.volume : 0.0;
-                it_new->second.timestamp = it_src->second.timestamp;
+                it_new->second.timestamp = it_src->second.timestamp != 0 ? it_src->second.timestamp : it_add->second.timestamp != 0 ? it_add->second.timestamp : 0;
             }
         }
 
@@ -249,6 +250,7 @@ namespace intrade_bar {
                 /* далее занимаемся получением новых тиков */
                 xtime::timestamp_t last_timestamp = (xtime::timestamp_t)(websocket_api.get_server_timestamp() + 0.5);
                 while(!is_stop_command) {
+                    /* получаем текущее время */
                     xtime::ftimestamp_t server_ftimestamp = websocket_api.get_server_timestamp();
                     xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
                     if(timestamp <= last_timestamp) {
@@ -262,11 +264,20 @@ namespace intrade_bar {
                      */
                     if((timestamp - last_timestamp) < xtime::SECONDS_IN_MINUTE) {
                         std::map<std::string,xquotes_common::Candle> candles;
+                        const uint32_t second = xtime::get_second_minute(timestamp);
                         for(uint32_t symbol_index = 0;
                             symbol_index < intrade_bar_common::CURRENCY_PAIRS;
                             ++symbol_index) {
-                            candles[intrade_bar_common::currency_pairs[symbol_index]] =
+                            /* для нулевой секунды возьмем цену предыдущего бара
+                             * для 1-59 секунды берем цену текущего бара
+                             */
+                            if(second == 0) {
+                                candles[intrade_bar_common::currency_pairs[symbol_index]] =
+                                websocket_api.get_timestamp_candle(symbol_index, timestamp - 1);
+                            } else {
+                                candles[intrade_bar_common::currency_pairs[symbol_index]] =
                                 websocket_api.get_timestamp_candle(symbol_index, timestamp);
+                            }
                         }
                         /* вызов callback */
                         if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
@@ -326,6 +337,7 @@ namespace intrade_bar {
                             array_merge_candles);
 
 
+                        /* вызываем callback функцию */
                         if(callback != nullptr) callback(
                             array_merge_candles,
                             EventType::HISTORICAL_DATA_RECEIVED,
