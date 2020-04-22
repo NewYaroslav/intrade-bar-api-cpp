@@ -1,19 +1,6 @@
 #include <iostream>
 #include <fstream>
-/*
-#include <iomanip>
-#include <curl/curl.h>
-#include <stdio.h>
-#include <cctype>
-#include <algorithm>
-#include <fstream>
-#include <random>
-#include <ctime>
-#include <Windows.h>
-#include <gzip/decompress.hpp>
-#include <nlohmann/json.hpp>
-#include <xtime.hpp>
-*/
+
 #include "intrade-bar-api.hpp"
 
 int main() {

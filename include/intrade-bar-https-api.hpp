@@ -1473,10 +1473,10 @@ namespace intrade_bar {
                         const double ask_close = (*it_candles)[i][6];
                         const double ask_high = (*it_candles)[i][7];
                         const double ask_low = (*it_candles)[i][8];
-                        candles[i].open = (bid_open + ask_open) / 2.0;
-                        candles[i].high = (bid_high + ask_high) / 2.0;
-                        candles[i].low = (bid_low + ask_low) / 2.0;
-                        candles[i].close = (bid_close + ask_close) / 2.0;
+                        candles[i].open = (bid_open + ask_open) / 2.0d;
+                        candles[i].high = (bid_high + ask_high) / 2.0d;
+                        candles[i].low = (bid_low + ask_low) / 2.0d;
+                        candles[i].close = (bid_close + ask_close) / 2.0d;
                         candles[i].volume = (*it_candles)[i][9];
                         /* округлим цены */
                         candles[i].open =
