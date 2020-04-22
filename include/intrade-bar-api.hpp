@@ -85,7 +85,7 @@ namespace intrade_bar {
                     candles[symbol_index] = raw_candles;
                 });
                 /* добавим задержку */
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
             }
             for(uint32_t symbol_index = 0;
                 symbol_index < intrade_bar_common::CURRENCY_PAIRS;

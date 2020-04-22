@@ -31,18 +31,18 @@ int main() {
                     const intrade_bar::IntradeBarApi::EventType event,
                     const xtime::timestamp_t timestamp) {
         /* получаем бар по валютной паре GBPCAD из candles */
-        xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("AUDCAD", candles);
+        xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("GBPCHF", candles);
         /* получено событие ПОЛУЧЕНЫ ИСТОРИЧЕСКИЕ ДАННЫЕ */
         if(event == intrade_bar::IntradeBarApi::EventType::HISTORICAL_DATA_RECEIVED) {
             std::cout << "history : " << xtime::get_str_date_time(timestamp);// << std::endl;
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
-                    << " AUDCAD close: " << candle.close
+                    << " GBPCHF close: " << candle.close
                     << " v: " << candle.volume
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
             } else {
-                std::cout << " AUDCAD error" << std::endl;
+                std::cout << " GBPCHF error" << std::endl;
             }
         } else
         /* получено событие НОВЫЙ ТИК */
@@ -51,14 +51,14 @@ int main() {
             if(xtime::get_second_minute(timestamp) >= 58 || xtime::get_second_minute(timestamp) == 0)
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
-                    << "AUDCAD tick close: " << candle.close
+                    << "GBPCHF tick close: " << candle.close
                     << " v: " << candle.volume
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << " " << xtime::get_str_date_time(timestamp)
                     << std::endl;
                 //std::this_thread::sleep_for(std::chrono::milliseconds(150000));
             } else {
-                std::cout << "AUDCAD (new tick) error" << std::endl;
+                std::cout << "GBPCHF (new tick) error" << std::endl;
             }
         }
 
