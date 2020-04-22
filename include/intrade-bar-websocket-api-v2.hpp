@@ -338,7 +338,7 @@ namespace intrade_bar {
 
                             /* читаем собщения, которые пришли */
                             clients[s]->on_message =
-                                    [&](std::shared_ptr<WssClient::Connection> connection,
+                                    [&,s](std::shared_ptr<WssClient::Connection> connection,
                                     std::shared_ptr<WssClient::InMessage> message) {
 #                               if(0)
                                 std::cout
@@ -373,9 +373,11 @@ namespace intrade_bar {
                             clients[s]->on_close =
                                     [&](std::shared_ptr<WssClient::Connection> /*connection*/,
                                     int status, const std::string & /*reason*/) {
-                                std::cerr << "intrade-bar: "
+                                std::cerr << "intrade.bar: "
                                     "closed connection with status code " << status
                                     << std::endl;
+                                is_websocket_init = false;
+                                is_error = true;
                                 io_service->stop();
                                 try {
                                     json j;
@@ -387,7 +389,6 @@ namespace intrade_bar {
                                     error_message = j.dump();
                                 }
                                 catch(...) {}
-                                is_error = true;
                             };
 
                             // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
@@ -395,8 +396,10 @@ namespace intrade_bar {
                                     [&](std::shared_ptr<WssClient::Connection> /*connection*/,
                                     const SimpleWeb::error_code &ec) {
                                 is_websocket_init = false;
+                                is_error = true;
+                                io_service->stop();
                                 std::cout
-                                    << "intrade-bar wss error: " << ec
+                                    << "intrade.bar (symbol index: " << s << ") wss error: " << ec
                                     << std::endl;
                                 try {
                                     json j;
@@ -410,19 +413,19 @@ namespace intrade_bar {
                                     error_message = j.dump();
                                 }
                                 catch(...) {}
-                                is_error = true;
                             };
                             clients[s]->io_service = io_service;
                             clients[s]->start();
                         } // for s
 
-                        //std::cout << "io_service->run()" << std::endl;
+                        std::cout << "intrade.bar connection" << std::endl;
                         io_service->run();
                         is_websocket_init = false;
 
                         for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                             clients[s].reset();
                         }
+                        std::cout << "intrade.bar restart connection" << std::endl;
                     } catch (std::exception& e) {
                         is_websocket_init = false;
                         try {
