@@ -69,7 +69,6 @@
 		<Unit filename="../../include/intrade-bar-https-api.hpp" />
 		<Unit filename="../../include/intrade-bar-logger.hpp" />
 		<Unit filename="../../include/intrade-bar-websocket-api-v2.hpp" />
-		<Unit filename="../../include/intrade-bar-websocket-api.hpp" />
 		<Unit filename="../../lib/Simple-WebSocket-Server/client_ws.hpp" />
 		<Unit filename="../../lib/Simple-WebSocket-Server/client_wss.hpp" />
 		<Unit filename="../../lib/Simple-WebSocket-Server/crypto.hpp" />

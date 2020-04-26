@@ -623,6 +623,7 @@ namespace intrade_bar {
             /* особый случай, бар еще не успел сформироваться */
             if(array_candles[symbol_index].back().timestamp ==
                 first_timestamp - xtime::SECONDS_IN_MINUTE) {
+#if(0) // я подумал, что если данных не было, значит их не было.
                 if(is_open_equal_close) {
                     const double price = array_candles[symbol_index].back().close;
                     return xquotes_common::Candle(
@@ -630,6 +631,7 @@ namespace intrade_bar {
                         0,
                         first_timestamp);
                 }
+#endif
                 return xquotes_common::Candle();
             }
 
