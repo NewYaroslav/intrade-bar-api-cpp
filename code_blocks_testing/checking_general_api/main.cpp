@@ -12,7 +12,7 @@ int main() {
     auth_file >> auth_json;
     auth_file.close();
 
-    const uint32_t number_bars = 10;
+    const uint32_t number_bars = 1500;
     intrade_bar::IntradeBarApi api(number_bars,[&](
                     const std::map<std::string,xquotes_common::Candle> &candles,
                     const intrade_bar::IntradeBarApi::EventType event,
@@ -29,7 +29,7 @@ int main() {
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
             } else {
-                std::cout << " GBPCHF error" << std::endl;
+                std::cout << " GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
             }
         } else
         /* получено событие НОВЫЙ ТИК */
@@ -45,7 +45,7 @@ int main() {
                     << std::endl;
                 //std::this_thread::sleep_for(std::chrono::milliseconds(150000));
             } else {
-                std::cout << "GBPCHF (new tick) error" << std::endl;
+                std::cout << " GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
             }
         }
 
