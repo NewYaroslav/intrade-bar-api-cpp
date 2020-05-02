@@ -257,6 +257,7 @@ namespace intrade_bar {
                     number_bars,
                     callback,
                     is_merge_hist_witch_stream]() {
+                const uint32_t standart_thread_delay = 10;
 
                 /* сначала инициализируем исторические данные */
                 uint32_t hist_data_number_bars = number_bars;
@@ -295,7 +296,7 @@ namespace intrade_bar {
                     hist_data_number_bars = (end_date_timestamp - init_date_timestamp) / xtime::SECONDS_IN_MINUTE;
 
 					std::this_thread::yield();
-					std::this_thread::sleep_for(std::chrono::milliseconds(10));
+					std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                 }
 
                 /* далее занимаемся получением новых тиков */
@@ -306,7 +307,7 @@ namespace intrade_bar {
                     xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
                     if(timestamp <= last_timestamp) {
                         std::this_thread::yield();
-						std::this_thread::sleep_for(std::chrono::milliseconds(10));
+						std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                         continue;
                     }
 
@@ -348,13 +349,15 @@ namespace intrade_bar {
 
                     /* ожидаем, когда минута однозначно станет историческими данными */
                     while(server_minute <= last_minute) {
-                        std::this_thread::yield();
-						std::this_thread::sleep_for(std::chrono::milliseconds(10));
 						server_ftimestamp = websocket_api.get_last_server_timestamp(); // получаем именно последнюю метку времени сервера, а не расчитанное время
                         timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
 						server_minute = timestamp / xtime::SECONDS_IN_MINUTE;
+						if(is_stop_command) break;
+						std::this_thread::yield();
+						std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                         continue;
                     }
+                    if(is_stop_command) break;
 
                     const uint64_t number_new_bars = server_minute - last_minute;
                     last_minute = server_minute;
@@ -411,11 +414,9 @@ namespace intrade_bar {
 					}
 
 					std::this_thread::yield();
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                 }
-                //is_stop = true;
             });
-            //stream_thread.detach();
         }
 
         ~IntradeBarApi() {

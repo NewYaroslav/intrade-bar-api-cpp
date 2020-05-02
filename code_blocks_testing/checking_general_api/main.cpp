@@ -45,7 +45,7 @@ int main() {
                     << std::endl;
                 //std::this_thread::sleep_for(std::chrono::milliseconds(150000));
             } else {
-                std::cout << " GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
+                std::cout << "GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
             }
         }
 
@@ -66,8 +66,8 @@ int main() {
 
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-#if(1)
+    std::this_thread::sleep_for(std::chrono::milliseconds(120000));
+#if(0)
     while(true) {
         std::this_thread::yield();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
