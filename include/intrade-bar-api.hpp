@@ -195,6 +195,9 @@ namespace intrade_bar {
     public:
 
         /** \brief Конструктор класса API
+		 * \param number_bars Количество баров истории, которая будет загружена рпедварительно
+		 * \param callback Функция для обратного вызова
+		 * \param is_wait_formation_new_bar Ожидание получения первого минутного бара
          * \param user_sert_file Файл-сертификат
          * \param user_cookie_file Файл для записи cookie
          * \param user_bets_log_file Файл для записи логов работы со сделками
