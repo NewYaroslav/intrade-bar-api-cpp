@@ -81,6 +81,7 @@ namespace intrade_bar {
                 ++symbol_index) {
 
                 array_thread[symbol_index] = std::thread([&,symbol_index] {
+                    if(is_stop_command) return;
                     std::vector<xquotes_common::Candle> raw_candles;
                     int err = http_api.get_historical_data(
                             symbol_index,
@@ -92,6 +93,7 @@ namespace intrade_bar {
                             attempts,
                             timeout);
                     if(err != OK) return;
+                    if(is_stop_command) return;
                     std::lock_guard<std::mutex> lock(candles_mutex);
                     candles[symbol_index] = raw_candles;
                 });
@@ -108,7 +110,7 @@ namespace intrade_bar {
                 }
 
                 /* добавим задержку */
-                std::this_thread::sleep_for(std::chrono::milliseconds(delay_thread));
+                if(!is_stop_command) std::this_thread::sleep_for(std::chrono::milliseconds(delay_thread));
             }
             if(thread_limit == 0) {
                 for(uint32_t symbol_index = 0;
@@ -249,6 +251,7 @@ namespace intrade_bar {
                         std::cout << "waiting historical data init" << diff << "\r";
                         old_diff = diff;
                     }
+                    if(is_stop_command) return;
                     std::this_thread::yield();
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 });
@@ -280,6 +283,7 @@ namespace intrade_bar {
                         10,     // количество попыток загрузки
                         10,     // таймаут
                         2);     // загружаем данные в два потока
+                    if(is_stop_command) return;
 
                     /* далее отправляем загруженные данные в callback */
                     xtime::timestamp_t start_timestamp = init_date_timestamp - (hist_data_number_bars) * xtime::SECONDS_IN_MINUTE;
@@ -298,6 +302,7 @@ namespace intrade_bar {
                     if(end_date_timestamp == init_date_timestamp) break;
                     hist_data_number_bars = (end_date_timestamp - init_date_timestamp) / xtime::SECONDS_IN_MINUTE;
 
+                    if(is_stop_command) return;
 					std::this_thread::yield();
 					std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                 }
@@ -309,6 +314,7 @@ namespace intrade_bar {
                     xtime::ftimestamp_t server_ftimestamp = websocket_api.get_server_timestamp();
                     xtime::timestamp_t timestamp = (xtime::timestamp_t)(server_ftimestamp + 0.5);
                     if(timestamp <= last_timestamp) {
+                        if(is_stop_command) return;
                         std::this_thread::yield();
 						std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                         continue;
@@ -381,6 +387,7 @@ namespace intrade_bar {
                             5,      // количество попыток загрузки
                             5,      // таймаут
                             0);     // загружаем данные во все потоки
+                        if(is_stop_command) return;
 
                         /* сливаем данные исторические и полученные от потока котировок
                          * это повышает стабильность торговли

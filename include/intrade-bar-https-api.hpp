@@ -1436,6 +1436,7 @@ namespace intrade_bar {
                     false,
                     timeout);
                 if(err == OK && response.size() != 0) break;
+                if(is_request_future_shutdown) break;
                 /* проверка на DDoS-GUARD */
                 if(response.size() > 1 &&
                     response[0] != '{' &&
@@ -1447,6 +1448,7 @@ namespace intrade_bar {
             }
             if(err != OK) return err;
             if(response.size() == 0) return DATA_NOT_AVAILABLE;
+            if(is_request_future_shutdown) return DATA_NOT_AVAILABLE;
             //std::cout << "response " << response << std::endl;
             try {
                 json j = json::parse(response);
