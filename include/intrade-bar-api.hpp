@@ -302,9 +302,8 @@ namespace intrade_bar {
                     if(end_date_timestamp == init_date_timestamp) break;
                     hist_data_number_bars = (end_date_timestamp - init_date_timestamp) / xtime::SECONDS_IN_MINUTE;
 
-                    if(is_stop_command) return;
-					std::this_thread::yield();
-					std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
+					//std::this_thread::yield();
+					if(!is_stop_command) std::this_thread::sleep_for(std::chrono::milliseconds(standart_thread_delay));
                 }
 
                 /* далее занимаемся получением новых тиков */

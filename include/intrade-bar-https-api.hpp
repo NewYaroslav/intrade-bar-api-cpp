@@ -70,11 +70,14 @@ namespace intrade_bar {
             uint64_t api_bet_id = 0;
             uint64_t broker_bet_id = 0;
             std::string symbol_name;
+            std::string note;
             int contract_type = 0;                      /**< Тип контракта BUY или SELL */
             uint32_t duration = 0;                      /**< Длительность контракта в секундах */
+            xtime::ftimestamp_t send_timestamp = 0;     /**< Метка времени начала контракта */
             xtime::timestamp_t opening_timestamp = 0;   /**< Метка времени начала контракта */
             xtime::timestamp_t closing_timestamp = 0;   /**< Метка времени конца контракта */
             double amount = 0;                          /**< Размер ставки в RUB или USD */
+            //double payout = 0;
             bool is_demo_account = false;               /**< Флаг демо аккаунта */
             bool is_rub_currency = false;               /**< Флаг рублевого счета */
             BetStatus bet_status = BetStatus::UNKNOWN_STATE;
@@ -1064,6 +1067,7 @@ namespace intrade_bar {
             new_bet.is_demo_account = is_demo_account;
             new_bet.is_rub_currency = is_rub_currency;
             new_bet.symbol_name = symbol;
+            new_bet.note = note;
 
             {
                 std::lock_guard<std::mutex> lock(array_bets_mutex);
@@ -1098,6 +1102,7 @@ namespace intrade_bar {
                         callback] {
                     /* сначала открываем сделку */
                     xtime::timestamp_t open_timestamp = 0;
+                    xtime::timestamp_t start_timestamp = get_server_timestamp();
                     double delay = 0;
                     uint64_t id_deal = 0;
 
@@ -1109,6 +1114,9 @@ namespace intrade_bar {
                         delay,
                         id_deal,
                         open_timestamp);
+
+                    /* вызываем функцию для отправки неопределенного состояни */
+                    if(callback != nullptr) callback(new_bet);
 
                     /* логируем ошибку открытия сделки */
                     if(err_sprint != OK) {
@@ -1129,6 +1137,7 @@ namespace intrade_bar {
                             std::lock_guard<std::mutex> lock(array_bets_mutex);
                             for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
                                 if(array_bets[i].api_bet_id == api_bet_id) {
+                                    array_bets[i].send_timestamp = start_timestamp;
                                     array_bets[i].opening_timestamp = open_timestamp;
                                     array_bets[i].closing_timestamp = open_timestamp + duration;
                                     array_bets[i].broker_bet_id = id_deal;
@@ -1167,6 +1176,9 @@ namespace intrade_bar {
                                 array_bets[i].closing_timestamp = open_timestamp + duration;
                                 array_bets[i].broker_bet_id = id_deal;
                                 array_bets[i].bet_status = BetStatus::WAITING_COMPLETION;
+
+                                /* вызываем callback для передачи состояния WAITING_COMPLETION */
+                                if(callback != nullptr) callback(array_bets[i]);
                                 break;
                             }
                         }
