@@ -1433,6 +1433,8 @@ namespace intrade_bar {
 
             const std::string body;
             const std::string ddos("DDoS-GUARD");
+            const std::string executed_false("\"executed\":false");
+            const std::string executed_true("\"executed\":true");
 
             std::string response;
 
@@ -1447,24 +1449,48 @@ namespace intrade_bar {
                     false,
                     false,
                     timeout);
-                if(err == OK && response.size() != 0) break;
+
+                /* если произошел сброс из деструктора, выходим */
                 if(is_request_future_shutdown) break;
+
+#               if(0) // код ниже (внутри условия) нужен только для тестирования!
+                if(err == OK &&
+                    response.size() != 0 &&
+                    response[0] == '{' &&
+                    response.find(executed_false) != std::string::npos) {
+                    std::cout << "executed_false " << extended_name_currency_pairs[symbol_index] << std::endl;
+                }
+#               endif
+
+                /* убеждаемся, что данные есть, и они без ошибок */
+                if(err == OK &&
+                    response.size() != 0 &&
+                    response[0] == '{' &&
+                    response.find(executed_true) != std::string::npos) break;
+
                 /* проверка на DDoS-GUARD */
                 if(response.size() > 1 &&
                     response[0] != '{' &&
                     response.find(ddos) != std::string::npos) {
+                    //std::cout << "DDOS_GUARD_DETECTED " << extended_name_currency_pairs[symbol_index] << std::endl;
                     return DDOS_GUARD_DETECTED;
                 }
+
                 /* ждем секунду умножить на количество попыток */
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000 * (a + 1)));
+                //std::this_thread::sleep_for(std::chrono::milliseconds(1000 * (a + 1)));
+                std::this_thread::sleep_for(std::chrono::milliseconds(4000));
             }
+
             if(err != OK) return err;
             if(response.size() == 0) return DATA_NOT_AVAILABLE;
             if(is_request_future_shutdown) return DATA_NOT_AVAILABLE;
-            //std::cout << "response " << response << std::endl;
+
             try {
                 json j = json::parse(response);
                 std::string str_err = j["response"]["error"];
+                bool is_executed = j["response"]["executed"];
+
+                if(!is_executed) return DATA_NOT_AVAILABLE;
                 if(str_err.size() != 0) return DATA_NOT_AVAILABLE;
                 auto it_candles = j.find("candles");
                 if(it_candles == j.end()) return DATA_NOT_AVAILABLE;
