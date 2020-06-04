@@ -281,22 +281,40 @@ namespace intrade_bar {
          */
         static int intrade_bar_header_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
             const char CONTENT_ENCODING_GZIP[] = "Content-Encoding: gzip";
+            const char CONTENT_ENCODING_GZIP_V2[] = "content-encoding: gzip";
             const char CONTENT_ENCODING_IDENTITY[] = "Content-Encoding: identity";
+            const char CONTENT_ENCODING_IDENTITY_V2[] = "content-encoding: identity";
             const char CONTENT_ENCODING[] = "Content-Encoding:";
+            const char CONTENT_ENCODING_V2[] = "content-encoding:";
             size_t buffer_size = nitems * size;
             int *content_encoding = (int*)userdata;
             if(content_encoding[0] == 0 && buffer_size >= (sizeof(CONTENT_ENCODING_GZIP) - 1)) {
                 if(strncmp(buffer, CONTENT_ENCODING_GZIP, sizeof(CONTENT_ENCODING_GZIP) - 1) == 0) {
                     content_encoding[0] = USE_CONTENT_ENCODING_GZIP;
                 }
-            } else
+            }
+            if(content_encoding[0] == 0 && buffer_size >= (sizeof(CONTENT_ENCODING_GZIP_V2) - 1)) {
+                if(strncmp(buffer, CONTENT_ENCODING_GZIP_V2, sizeof(CONTENT_ENCODING_GZIP_V2) - 1) == 0) {
+                    content_encoding[0] = USE_CONTENT_ENCODING_GZIP;
+                }
+            }
             if(content_encoding[0] == 0 && buffer_size >= (sizeof(CONTENT_ENCODING_IDENTITY) - 1)) {
                 if(strncmp(buffer, CONTENT_ENCODING_IDENTITY, sizeof(CONTENT_ENCODING_IDENTITY) - 1) == 0) {
                     content_encoding[0] = USE_CONTENT_ENCODING_IDENTITY;
                 }
-            } else
+            }
+            if(content_encoding[0] == 0 && buffer_size >= (sizeof(CONTENT_ENCODING_IDENTITY_V2) - 1)) {
+                if(strncmp(buffer, CONTENT_ENCODING_IDENTITY_V2, sizeof(CONTENT_ENCODING_IDENTITY_V2) - 1) == 0) {
+                    content_encoding[0] = USE_CONTENT_ENCODING_IDENTITY;
+                }
+            }
             if(content_encoding[0] == 0 && buffer_size >= (sizeof(CONTENT_ENCODING) - 1)) {
                 if(strncmp(buffer, CONTENT_ENCODING, sizeof(CONTENT_ENCODING) - 1) == 0) {
+                    content_encoding[0] = USE_CONTENT_ENCODING_NOT_SUPPORED;
+                }
+            }
+            if(content_encoding[0] == 0 && buffer_size >= (sizeof(CONTENT_ENCODING_V2) - 1)) {
+                if(strncmp(buffer, CONTENT_ENCODING_V2, sizeof(CONTENT_ENCODING_V2) - 1) == 0) {
                     content_encoding[0] = USE_CONTENT_ENCODING_NOT_SUPPORED;
                 }
             }
