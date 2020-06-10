@@ -44,7 +44,7 @@ namespace intrade_bar_common {
     const uint32_t CURRENCY_PAIRS = 26; /**< Количество торговых символов */
     const uint32_t MAX_DURATION = xtime::SECONDS_IN_MINUTE * 500;   /**<
         Максимальная продолжительность опциона */
-    const uint32_t MAX_NUM_BET = 10;    /**< Максимальное количество одновременно открытых сделок */
+    const uint32_t MAX_NUM_BET = 5;     /**< Максимальное количество одновременно открытых сделок */
     // минимальные и максимальные ставки
     const uint32_t MAX_BET_USD = 500;   /**< Максимальная ставка в долларах */
     const uint32_t MAX_BET_RUB = 25000; /**< Максимальная ставка в рублях */
