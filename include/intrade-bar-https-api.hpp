@@ -936,7 +936,7 @@ namespace intrade_bar {
             /* проверяем, не надо ли подождать перед открытием сделки */
             if(bets_last_timestamp > 0) {
                 while(xtime::get_ftimestamp() < (bets_last_timestamp + bets_delay)) {
-
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 };
             }
 
