@@ -116,8 +116,10 @@ namespace intrade_bar {
             }
         }
 
-        std::thread dynamic_update_account_thread;  /**< Поток для обновления состояния аккаунта */
-        std::atomic<int> bets_counter = ATOMIC_VAR_INIT(0); /**< Счетчик одновременно открытых сделок */
+        std::thread dynamic_update_account_thread;                      /**< Поток для обновления состояния аккаунта */
+        std::atomic<int> bets_counter = ATOMIC_VAR_INIT(0);             /**< Счетчик одновременно открытых сделок */
+        std::atomic<double> bets_last_timestamp = ATOMIC_VAR_INIT(1.0d);/**< Последняя метка времени открытия сделки */
+        std::atomic<double> bets_delay = ATOMIC_VAR_INIT(1.0d);         /**< Задержка между открытием сделок */
 
         std::mutex bets_id_counter_mutex;
         uint64_t bets_id_counter = 0;   /**< Счетчик номера сделок, открытых через API */
@@ -931,7 +933,17 @@ namespace intrade_bar {
             const std::string url_open_bo("https://intrade.bar/ajax5_new.php");
             std::string response_sprint;
 
+            /* проверяем, не надо ли подождать перед открытием сделки */
+            if(bets_last_timestamp > 0) {
+                while(xtime::get_ftimestamp() < (bets_last_timestamp + bets_delay)) {
+
+                };
+            }
+
+            /* время открытия сделки */
             xtime::ftimestamp_t sprint_start = xtime::get_ftimestamp();
+            bets_last_timestamp = sprint_start;
+
             int err = post_request(
                 url_open_bo,
                 body_sprint,
@@ -1387,6 +1399,13 @@ namespace intrade_bar {
                 array_bets.clear();
                 bets_id_counter = 0;
             }
+        }
+
+        /** \brief Установить задержку между открытием сделок
+         * \param delay Задержка между открытием сделок
+         */
+        inline void set_bets_delay(const double delay) {
+            bets_delay = delay;
         }
 
         /** \brief Получить параметры торговли

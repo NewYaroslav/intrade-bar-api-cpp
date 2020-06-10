@@ -689,6 +689,13 @@ namespace intrade_bar {
         inline void set_option_open_price(const bool is_enable) {
             websocket_api.set_option_open_price(is_enable);
         }
+
+        /** \brief Установить задержку между открытием сделок
+         * \param delay Задержка между открытием сделок
+         */
+        inline void set_bets_delay(const double delay) {
+            http_api.set_bets_delay(delay);
+        }
     };
 }
 
