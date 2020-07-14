@@ -216,6 +216,16 @@ namespace intrade_bar_common {
         REAL = 1,   ///< Реальный счет
     };
 
+    /** \brief Получить метку времени закрытия CLASSIC бинарного опциона
+     * \param timestamp Метка времени
+     * \param expiration Экспирация
+     * \return Метку времени закрытия CLASSIC бинарного опциона
+     */
+    xtime::timestamp_t get_classic_bo_closing_timestamp(const xtime::timestamp_t timestamp, const uint32_t expiration = 5) {
+        const xtime::timestamp_t classic_bet_timestamp_future = (timestamp + (expiration + 3) * xtime::SECONDS_IN_MINUTE);
+        return classic_bet_timestamp_future - classic_bet_timestamp_future % (5 * xtime::SECONDS_IN_MINUTE);
+    }
+
     /** \brief Получить аргумент командной строки
      */
     const char *get_argument(int argc, char **argv, const char *key) {
@@ -262,11 +272,18 @@ namespace intrade_bar_common {
 		message_size = message.size();
 	}
 
+	/// Типы бинарных опционов
+	enum class TypesBinaryOptions {
+        SPRINT = 0,     /**< Спринт */
+        CLASSIC,        /**< Классические */
+	};
+
     /** \brief Класс бинарного опциона
      */
 	class BinaryOption {
 	public:
         std::string symbol_name;    /**< Имя символа (валютной пары) */
+        TypesBinaryOptions bo_type; /**< Тип бинарного опциона (SPRINT или CLASSIC) */
         int32_t contract_type = 0;  /**< Тип контракта (BUY/SELL) */
         uint32_t duration = 0;      /**< Экспирация */
         double delay = 0;           /**< Задержка на отправление сделки */

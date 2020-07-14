@@ -12,7 +12,7 @@ int main() {
     auth_file >> auth_json;
     auth_file.close();
 
-    const uint32_t number_bars = 1500;
+    const uint32_t number_bars = 15;
     intrade_bar::IntradeBarApi api(number_bars,[&](
                     const std::map<std::string,xquotes_common::Candle> &candles,
                     const intrade_bar::IntradeBarApi::EventType event,
@@ -21,11 +21,11 @@ int main() {
         xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("GBPCHF", candles);
         /* получено событие ПОЛУЧЕНЫ ИСТОРИЧЕСКИЕ ДАННЫЕ */
         if(event == intrade_bar::IntradeBarApi::EventType::HISTORICAL_DATA_RECEIVED) {
-#           if(0)
+#           if(1)
             std::cout << "history : " << xtime::get_str_date_time(timestamp);// << std::endl;
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
-                    << " GBPCHF close: " << candle.close
+                    << " GBPCHF c: " << candle.close
                     << " v: " << candle.volume
                     << " t: " << xtime::get_str_date_time(candle.timestamp)
                     << std::endl;
@@ -33,6 +33,7 @@ int main() {
                 std::cout << " GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
             }
 #           endif
+#           if(0)
             for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                 xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle(intrade_bar_common::currency_pairs[s], candles);
                 if(intrade_bar::IntradeBarApi::check_candle(candle)) {
@@ -42,6 +43,7 @@ int main() {
                 }
             }
             std::cout << "t: " << xtime::get_str_date_time(timestamp) << std::endl;
+#           endif
         } else
         /* получено событие НОВЫЙ ТИК */
         if(event == intrade_bar::IntradeBarApi::EventType::NEW_TICK) {
@@ -87,7 +89,7 @@ int main() {
         std::cout << std::endl;
 #endif
 
-    });
+    },false,true,false,false);
 
 #   if(0)
     while(true) {
