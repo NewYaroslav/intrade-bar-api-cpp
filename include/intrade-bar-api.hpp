@@ -564,6 +564,38 @@ namespace intrade_bar {
          * Данный метод открывает бинарный опцион типа Спринт
          * \param symbol Символ
          * \param amount Размер ставки
+         * \param bo_type Тип бинарного опциона (CLASSIC или SPRINT)
+         * \param contract_type Тип контракта (BUY или SELL)
+         * \param duration Длительность экспирации опциона
+         * \param callback Функция для обратного вызова
+         * \return Код ошибки
+         */
+        int open_bo(
+                const std::string &symbol,
+                const double amount,
+                const TypesBinaryOptions bo_type,
+                const int contract_type,
+                const uint32_t duration,
+                std::function<void(
+                    const IntradeBarHttpApi::Bet &bet)> callback = nullptr) {
+            std::string note;
+            uint64_t api_bet_id = 0;
+            return http_api.async_open_bo(
+                symbol,
+                note,
+                amount,
+                bo_type,
+                contract_type,
+                duration,
+                api_bet_id,
+                callback);
+        }
+
+        /** \brief Открыть бинарный опцион
+         *
+         * Данный метод открывает бинарный опцион типа Спринт
+         * \param symbol Символ
+         * \param amount Размер ставки
          * \param contract_type Тип контракта (BUY или SELL)
          * \param duration Длительность экспирации опциона
          * \param callback Функция для обратного вызова
@@ -582,6 +614,38 @@ namespace intrade_bar {
                 symbol,
                 note,
                 amount,
+                contract_type,
+                duration,
+                api_bet_id,
+                callback);
+        }
+
+        /** \brief Открыть бинарный опцион
+         *
+         * Данный метод открывает бинарный опцион типа Спринт
+         * \param symbol Символ
+         * \param amount Размер ставки
+         * \param bo_type Тип бинарного опциона (CLASSIC или SPRINT)
+         * \param contract_type Тип контракта (BUY или SELL)
+         * \param duration Длительность экспирации опциона
+         * \param callback Функция для обратного вызова
+         * \return Код ошибки
+         */
+        int open_bo(
+                const std::string &symbol,
+                const std::string &note,
+                const double amount,
+                const TypesBinaryOptions bo_type,
+                const int contract_type,
+                const uint32_t duration,
+                uint64_t &api_bet_id,
+                std::function<void(
+                    const IntradeBarHttpApi::Bet &bet)> callback = nullptr) {
+            return http_api.async_open_bo(
+                symbol,
+                note,
+                amount,
+                bo_type,
                 contract_type,
                 duration,
                 api_bet_id,

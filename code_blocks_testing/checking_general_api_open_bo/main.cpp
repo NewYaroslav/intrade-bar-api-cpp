@@ -78,6 +78,7 @@ int main() {
                         "EURUSD",
                         "test",
                         50,
+                        intrade_bar_common::TypesBinaryOptions::SPRINT,
                         intrade_bar_common::BUY,
                         180,
                         api_bet_id,
