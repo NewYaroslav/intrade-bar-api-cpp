@@ -955,7 +955,7 @@ namespace intrade_bar {
                 };
             }
 
-            std::cout << "body: " << body << std::endl;
+            // std::cout << "body: " << body << std::endl;
 
             /* время открытия сделки */
             xtime::ftimestamp_t bet_start_time = xtime::get_ftimestamp();
@@ -970,7 +970,7 @@ namespace intrade_bar {
                 false);
             if(err != OK) return err;
 
-            std::cout << "response: " << response << std::endl;
+            // std::cout << "response: " << response << std::endl;
 
             xtime::ftimestamp_t bet_end_time = xtime::get_ftimestamp();
             delay = (double)(bet_end_time - bet_start_time);
