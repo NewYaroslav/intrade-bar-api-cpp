@@ -662,8 +662,8 @@ namespace intrade_bar {
         int connect(
                 const std::string &email,
                 const std::string &password,
-                const bool &is_demo_account,
-                const bool &is_rub_currency) {
+                const bool is_demo_account,
+                const bool is_rub_currency) {
             return http_api.connect(email, password, is_demo_account, is_rub_currency);
         }
 

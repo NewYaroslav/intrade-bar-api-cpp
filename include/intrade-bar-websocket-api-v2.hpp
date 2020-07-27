@@ -342,7 +342,7 @@ namespace intrade_bar {
                                     std::shared_ptr<WssClient::InMessage> message) {
 #                               if(0)
                                 std::cout
-                                    << "intrade-bar message->string: "
+                                    << "intrade-bar wss message->string: "
                                     << message->string()
                                     << std::endl;
 #                               endif
@@ -373,7 +373,7 @@ namespace intrade_bar {
                             clients[s]->on_close =
                                     [&](std::shared_ptr<WssClient::Connection> /*connection*/,
                                     int status, const std::string & /*reason*/) {
-                                std::cerr << "intrade.bar: "
+                                std::cerr << "intrade.bar wss: "
                                     "closed connection with status code " << status
                                     << std::endl;
                                 is_websocket_init = false;
@@ -418,14 +418,14 @@ namespace intrade_bar {
                             clients[s]->start();
                         } // for s
 
-                        std::cout << "intrade.bar connection" << std::endl;
+                        std::cout << "wss intrade.bar connection" << std::endl;
                         io_service->run();
                         is_websocket_init = false;
 
                         for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                             clients[s].reset();
                         }
-                        std::cout << "intrade.bar restart connection" << std::endl;
+                        std::cout << "restart wss intrade.bar connection" << std::endl;
                     } catch (std::exception& e) {
                         is_websocket_init = false;
                         try {

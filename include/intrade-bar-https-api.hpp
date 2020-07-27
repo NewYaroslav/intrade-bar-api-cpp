@@ -1904,22 +1904,25 @@ namespace intrade_bar {
             int err = OK;
             for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay * 1000));
             }
             if(err != OK) return err;
-            if(!is_demo && !is_demo_account) return OK;
-            if(is_demo && is_demo_account) return OK;
+            if(is_demo == is_demo_account) return OK;
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_switch_account()) == OK) break;
-                xtime::delay(delay);
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay * 1000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             /* еще раз узнаем профиль, чтобы обновить флаг is_demo_account */
             for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay * 1000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             return OK;
         }
 
@@ -1936,22 +1939,24 @@ namespace intrade_bar {
             int err = OK;
             for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay * 1000));;
             }
             if(err != OK) return err;
-            if(!is_rub && !is_rub_currency) return OK;
-            if(is_rub && is_rub_currency) return OK;
+            if(is_rub == is_rub_currency) return OK;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_switch_currency()) == OK) break;
-                xtime::delay(delay);
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay * 1000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             /* еще раз узнаем профиль, чтобы обновить флаг is_rub_currency */
             for(uint32_t i = 0; i < num_attempts; ++i) {
                 if((err = request_profile()) == OK) break;
-                xtime::delay(delay);
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay * 1000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             return OK;
         }
 
@@ -2086,28 +2091,31 @@ namespace intrade_bar {
         int connect(
                 const std::string &email,
                 const std::string &password,
-                const bool &is_demo_account,
-                const bool &is_rub_currency) {
+                const bool is_demo_account,
+                const bool is_rub_currency) {
             int err = OK;
             const uint32_t attempts = 10;
             for(uint32_t n = 0; n < attempts; ++n) {
                 if((err = connect(email, password)) == OK) break;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(5000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             for(uint32_t n = 0; n < attempts; ++n) {
                 if((err = switch_account(is_demo_account)) == OK) break;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(5000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             for(uint32_t n = 0; n < attempts; ++n) {
                 if((err = switch_account_currency(is_rub_currency)) == OK) break;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(5000));
             }
             if(err != OK) return err;
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             for(uint32_t n = 0; n < attempts; ++n) {
                 if((err = request_balance()) == OK) break;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(5000));
             }
             return err;
         }
@@ -2128,28 +2136,31 @@ namespace intrade_bar {
                 int err = OK;
                 for(uint32_t n= 0; n < attempts; ++n) {
                     if((err = connect(email, password)) == OK) break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                 }
                 if(err != OK) return err;
                 if(j.find("demo_account") != j.end()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                     bool is_demo_account = j["demo_account"];
                     for(uint32_t n= 0; n < attempts; ++n) {
                         if((err = switch_account(is_demo_account)) == OK) break;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                     }
                     if(err != OK) return err;
                 }
                 if(j.find("rub_currency") != j.end()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                     bool is_rub_currency = j["rub_currency"];
                     for(uint32_t n= 0; n < attempts; ++n) {
                         if((err = switch_account_currency(is_rub_currency)) == OK) break;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                     }
                     if(err != OK) return err;
                 }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 for(uint32_t n = 0; n < attempts; ++n) {
                     if((err = request_balance()) == OK) break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                 }
                 return err;
             }
