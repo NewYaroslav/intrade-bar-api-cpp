@@ -376,9 +376,9 @@ namespace intrade_bar {
                                 std::cerr << "intrade.bar wss: "
                                     "closed connection with status code " << status
                                     << std::endl;
-                                is_websocket_init = false;
                                 is_error = true;
-                                io_service->stop();
+                                if(io_service) io_service->stop();
+                                is_websocket_init = false;
                                 try {
                                     json j;
                                     j["function"] = "QuotationsStream";
@@ -395,9 +395,9 @@ namespace intrade_bar {
                             clients[s]->on_error =
                                     [&](std::shared_ptr<WssClient::Connection> /*connection*/,
                                     const SimpleWeb::error_code &ec) {
-                                is_websocket_init = false;
                                 is_error = true;
-                                io_service->stop();
+                                if(io_service) io_service->stop();
+                                is_websocket_init = false;
                                 std::cout
                                     << "intrade.bar (symbol index: " << s << ") wss error: " << ec
                                     << std::endl;
@@ -419,7 +419,7 @@ namespace intrade_bar {
                         } // for s
 
                         std::cout << "wss intrade.bar connection" << std::endl;
-                        io_service->run();
+                        if(io_service) io_service->run();
                         is_websocket_init = false;
 
                         for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
@@ -465,7 +465,6 @@ namespace intrade_bar {
                         catch(...) {}
                         break;
                     }
-					std::this_thread::yield();
 					const uint64_t RECONNECT_DELAY = 5000;
 					std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
                 } // while
@@ -482,7 +481,6 @@ namespace intrade_bar {
             }
             io_service->stop();
             while(is_websocket_init) {
-                std::this_thread::yield();
                 const uint64_t RECONNECT_DELAY = 1000;
                 std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
             }
