@@ -795,6 +795,15 @@ namespace intrade_bar {
         inline void set_bets_delay(const double delay) {
             http_api.set_bets_delay(delay);
         }
+
+        /** \brief Получить цену тика символа
+         *
+         * \param symbol_index Индекс символа
+         * \return Цена (bid+ask)/2
+         */
+        inline double get_price(const size_t symbol_index) {
+            return websocket_api.get_price(symbol_index);
+        }
     };
 }
 
