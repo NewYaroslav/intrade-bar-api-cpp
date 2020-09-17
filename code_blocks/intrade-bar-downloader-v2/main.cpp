@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <csignal>
 
-#define PROGRAM_VERSION "2.0"
-#define PROGRAM_DATE    "20.04.2020"
+#define PROGRAM_VERSION "2.1"
+#define PROGRAM_DATE    "17.09.2020"
 
 using namespace std;
 
@@ -90,6 +90,7 @@ int main(int argc, char **argv) {
     uint32_t price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2;
     uint32_t check_last_days = 0;
 
+    std::string point("1.intrade.bar");
     std::string json_file;
     std::string path_store;
     std::string environmental_variable;
@@ -104,6 +105,9 @@ int main(int argc, char **argv) {
             [&](
                 const std::string &key,
                 const std::string &value){
+        if(key == "point") {
+            point = value;
+        } else
         if(key == "json_file" || key == "jf") {
             json_file = value;
         } else
@@ -159,6 +163,10 @@ int main(int argc, char **argv) {
             auth_file >> auth_json;
             auth_file.close();
             //
+            if(auth_json["point"] != nullptr) {
+                point = auth_json["point"];
+            }
+            //
             if(auth_json["bets_log_file"] != nullptr) {
                 file_name_bets_log = auth_json["bets_log_file"];
             }
@@ -198,10 +206,10 @@ int main(int argc, char **argv) {
             if(auth_json["price_type"] == "(bid+ask)/2")
                 price_type = intrade_bar_common::FXCM_USE_HIST_QUOTES_BID_ASK_DIV2;
 
-            if(auth_json["only_broker_supported_currency_pairs"] != nullptr)
+            if(auth_json["only_broker_supported_currency_pairs"] != nullptr) {
                 is_only_broker_supported_currency_pairs =
                     auth_json["only_broker_supported_currency_pairs"];
-
+            }
             if(auth_json["check_last_days"] != nullptr) {
                 check_last_days = auth_json["check_last_days"];
             }
@@ -331,6 +339,7 @@ int main(int argc, char **argv) {
                     !intrade_bar_common::is_currency_pairs[symbol]) continue;
 
                 intrade_bar::IntradeBarHttpApi iApi(
+                    point,
                     sert_file,
                     cookie_file,
                     file_name_bets_log,

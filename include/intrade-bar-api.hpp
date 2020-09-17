@@ -24,7 +24,6 @@
 #ifndef INTRADE_BAR_API_HPP_INCLUDED
 #define INTRADE_BAR_API_HPP_INCLUDED
 
-
 #include "intrade-bar-https-api.hpp"
 #include "intrade-bar-websocket-api-v2.hpp"
 #include <future>
@@ -197,7 +196,8 @@ namespace intrade_bar {
     public:
 
         /** \brief Конструктор класса API
-		 * \param number_bars Количество баров истории, которая будет загружена рпедварительно
+		 * \param user_point Точка доступа к брокерку, равна intrade.bar или 1.intrade.bar
+		 * \param user_number_bars Количество баров истории, которая будет загружена рпедварительно
 		 * \param callback Функция для обратного вызова
 		 * \param is_wait_formation_new_bar Ожидание получения первого минутного бара
          * \param is_open_equal_close Флаг, по умолчанию true. Если флаг установлен, то цена открытия бара равна цене закрытия предыдущего бара
@@ -210,7 +210,8 @@ namespace intrade_bar {
          * \param user_websocket_log_file Файл для записи логов вебсокета
          */
         IntradeBarApi(
-                const uint32_t number_bars = 1440,
+                const std::string user_point = "1.intrade.bar",
+                const uint32_t user_number_bars = 1440,
                 std::function<void(
                     const std::map<std::string,xquotes_common::Candle> &candles,
                     const EventType event,
@@ -224,8 +225,8 @@ namespace intrade_bar {
                 const std::string &user_bets_log_file = "logger/intrade-bar-bets.log",
                 const std::string &user_work_log_file = "logger/intrade-bar-https-work.log",
                 const std::string &user_websocket_log_file = "logger/intrade-bar-websocket.log") :
-                http_api(user_sert_file, user_cookie_file, user_bets_log_file, user_work_log_file),
-                websocket_api(user_sert_file, user_websocket_log_file) {
+                http_api(user_point, user_sert_file, user_cookie_file, user_bets_log_file, user_work_log_file),
+                websocket_api(user_point, user_sert_file, user_websocket_log_file) {
 
             /* установим настройки цены открытия */
             websocket_api.set_option_open_price(is_open_equal_close);
@@ -262,14 +263,14 @@ namespace intrade_bar {
             /* создаем поток обработки событий */
             callback_future = std::async(std::launch::async,[
                     &,
-                    number_bars,
+                    user_number_bars,
                     callback,
                     is_merge_hist_witch_stream,
                     is_use_hist_downloading]() {
                 const uint32_t standart_thread_delay = 10;
 
                 /* сначала инициализируем исторические данные */
-                uint32_t hist_data_number_bars = number_bars;
+                uint32_t hist_data_number_bars = user_number_bars;
                 uint64_t last_minute = 0;
                 while(!is_stop_command) {
                     /* первым делом грузим исторические данные в несколько потоков */

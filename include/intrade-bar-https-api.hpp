@@ -46,6 +46,8 @@ namespace intrade_bar {
      */
     class IntradeBarHttpApi {
     public:
+        std::string point = "1.intrade.bar";
+
         /// Варианты кодирования
         enum {
             USE_CONTENT_ENCODING_GZIP = 1,          ///< Сжатие GZIP
@@ -177,52 +179,62 @@ namespace intrade_bar {
          * Данный метод нужен для внутреннего использования
          */
         void init_http_headers_switch() {
+            std::string referer("Referer: https://" + point + "/profile");
             http_headers_switch = curl_slist_append(http_headers_switch, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_switch = curl_slist_append(http_headers_switch, "Accept: */*");
             http_headers_switch = curl_slist_append(http_headers_switch, "Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
             http_headers_switch = curl_slist_append(http_headers_switch, "Accept-Encoding: gzip");
-            http_headers_switch = curl_slist_append(http_headers_switch, "Referer: https://intrade.bar/profile");
             http_headers_switch = curl_slist_append(http_headers_switch, "Connection: keep-alive");
             http_headers_switch = curl_slist_append(http_headers_switch, "Content-Type: application/x-www-form-urlencoded; charset=UTF-8");
             http_headers_switch = curl_slist_append(http_headers_switch, "X-Requested-With: XMLHttpRequest");
+            //http_headers_switch = curl_slist_append(http_headers_switch, "Referer: https://intrade.bar/profile");
+            http_headers_switch = curl_slist_append(http_headers_switch, referer.c_str());
         }
 
         void init_http_headers_open_bo() {
+            std::string origin("Origin: https://" + point);
+            std::string referer("Referer: https://" + point + "/");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Accept: */*");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Accept-Encoding: gzip");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Content-Type: application/x-www-form-urlencoded");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "X-Requested-With: XMLHttpRequest");
-            http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Origin: https://intrade.bar");
             http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Connection: keep-alive");
-            http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Referer: https://intrade.bar/");
+            //http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Referer: https://intrade.bar/");
+            //http_headers_open_bo = curl_slist_append(http_headers_open_bo, "Origin: https://intrade.bar");
+            http_headers_open_bo = curl_slist_append(http_headers_open_bo, referer.c_str());
+            http_headers_open_bo = curl_slist_append(http_headers_open_bo, origin.c_str());
         }
 
         /** \brief Инициализировать заголовки для загрузки исторических данных
          * Данный метод нужен для внутреннего использования
          */
         void init_http_headers_quotes() {
+            std::string referer("Referer: https://" + point + "/quotes");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Accept-Encoding: gzip");
-            http_headers_quotes = curl_slist_append(http_headers_quotes, "Referer: https://intrade.bar/quotes");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Connection: keep-alive");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Content-Type: application/x-www-form-urlencoded");
             http_headers_quotes = curl_slist_append(http_headers_quotes, "Upgrade-Insecure-Requests: 1");
+            //http_headers_quotes = curl_slist_append(http_headers_quotes, "Referer: https://intrade.bar/quotes");
+            http_headers_quotes = curl_slist_append(http_headers_quotes, referer.c_str());
         }
 
         /** \brief Инициализировать заголовки для загрузки исторических данных
          * Данный метод нужен для внутреннего использования
          */
         void init_http_headers_quotes_history() {
+            std::string referer("Referer: https://" + point + "/");
             http_headers_quotes_history = curl_slist_append(http_headers_quotes, "User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0");
             http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Accept: */*");
             http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
             http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Accept-Encoding: gzip");
-            http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Referer: https://intrade.bar/");
             http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Connection: keep-alive");
+            //http_headers_quotes_history = curl_slist_append(http_headers_quotes, "Referer: https://intrade.bar/");
+            http_headers_quotes_history = curl_slist_append(http_headers_quotes, referer.c_str());
         }
 
         /** \brief Инициализировать все заголовки
@@ -683,7 +695,7 @@ namespace intrade_bar {
          * \return вернет код ошибки или 0 в случае успешного завершения
          */
         int request_profile() {
-            const std::string url_profile = "https://intrade.bar/profile";
+            const std::string url_profile = "https://" + point + "/profile";
             const std::string body_profile;
             std::string response_profile;
             int err = post_request(url_profile, body_profile, http_headers_auth, response_profile, true, false);
@@ -696,7 +708,7 @@ namespace intrade_bar {
          * \return вернет код ошибки или 0 в случае успешного завершения
          */
         int request_balance() {
-            const std::string url("https://intrade.bar/balance.php");
+            const std::string url("https://" + point + "/balance.php");
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
             int err = post_request(url, body, http_headers_switch, response, false, false);
@@ -778,7 +790,7 @@ namespace intrade_bar {
          * Каждый вызов данной функции вызывает переключение аккаунта на противоположный тип
          */
         int request_switch_account() {
-            const std::string url = "https://intrade.bar/user_real_trade.php";
+            const std::string url = "https://" + point + "/user_real_trade.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
             int err = post_request(url, body, http_headers_switch, response, true, false);
@@ -791,7 +803,7 @@ namespace intrade_bar {
          * Каждый вызов данной функции вызывает переключение валюты счета на противоположный тип
          */
         int request_switch_currency() {
-            const std::string url = "https://intrade.bar/user_currency_edit.php";
+            const std::string url = "https://" + point + "/user_currency_edit.php";
             const std::string body = "user_id=" + user_id + "&user_hash=" + user_hash;
             std::string response;
             int err = post_request(url, body, http_headers_switch, response, true, false);
@@ -953,7 +965,7 @@ namespace intrade_bar {
             body += "&status=";
             body += std::to_string(status);
 
-            const std::string url_open_bo("https://intrade.bar/ajax5_new.php");
+            const std::string url_open_bo("https://" + point + "/ajax5_new.php");
             std::string response;
 
             /* проверяем, не надо ли подождать перед открытием сделки */
@@ -1049,7 +1061,7 @@ namespace intrade_bar {
          * \return Код ошибки
          */
         int check_bo(const uint64_t id_deal, double &price, double &profit) {
-            const std::string url_open_bo("https://intrade.bar/trade_check2.php");
+            const std::string url_open_bo("https://" + point + "/trade_check2.php");
             std::string body_check("user_id=");
                 body_check += user_id;
                 body_check += "&user_hash=";
@@ -1558,7 +1570,7 @@ namespace intrade_bar {
         int get_symbol_parameters(
                 const int symbol_index,
                 uint32_t &pricescale) {
-            std::string url("https://intrade.bar/symbols?symbol=FXCM:");
+            std::string url("https://" + point + "/symbols?symbol=FXCM:");
             url += extended_name_currency_pairs[symbol_index];
             const std::string body;
             std::string response;
@@ -1602,7 +1614,7 @@ namespace intrade_bar {
                 const uint32_t timeout = 10) {
             // https://intrade.bar/getHistory.php?symbol=EUR/USD&resolution=1&from=1582491336&to=158251731
             // std::string url("https://intrade.bar/fxhistory/?symbol=");
-            std::string url("https://intrade.bar/fxhis/?symbol=");
+            std::string url("https://"+ point + "/fxhis/?symbol=");
             // std::string url("https://intrade.bar/getHistory.php?symbol=");
             url += extended_name_currency_pairs[symbol_index];
             url += "&resolution=1&from=";
@@ -1867,7 +1879,7 @@ namespace intrade_bar {
             const xtime::timestamp_t date_time_end = date_time + offset_time;
             xtime::DateTime iDateTime(date_time + GMT_OFFSET);
             xtime::DateTime iDateTimeEnd(date_time_end + GMT_OFFSET);
-            const std::string url_quotes = "https://intrade.bar/quotes";
+            const std::string url_quotes = "https://"+ point + "/quotes";
             const std::string body_quotes =
                 "option=" + currency_pairs[symbol_ind] +
                 "&date=" + std::to_string(iDateTime.year) +
@@ -1996,7 +2008,7 @@ namespace intrade_bar {
          */
         int check_partner_user_id(
                 const std::string &user_id) {
-            std::string url("https://intrade.bar/partner/user?sort=rub_down&limit=25&page=1&user_id=");
+            std::string url("https://"+ point + "/partner/user?sort=rub_down&limit=25&page=1&user_id=");
             url += user_id;
             const std::string body;
             std::string response;
@@ -2031,18 +2043,18 @@ namespace intrade_bar {
         int simple_connection(
                 const std::string &email,
                 const std::string &password) {
-            std::string url_login = "https://intrade.bar/login";
+            std::string url_login = "https://"+ point + "/login";
             std::string body_login = "email=" + email + "&password=" + password + "&action=";
             std::string response_login;
             int err = post_request(url_login, body_login, http_headers_auth, response_login, true, true);
             if(err != OK) return err;
-            const std::string str_auth("intrade.bar/auth/");
+            const std::string str_auth(point + "/auth/");
             std::string fragment_url;
             if(!get_string_fragment(response_login, str_auth, "'", fragment_url)) return AUTHORIZATION_ERROR;
             if(!get_string_fragment(fragment_url, "id=", "&", user_id)) return AUTHORIZATION_ERROR;
             if(!get_string_fragment(fragment_url, "hash=", user_hash)) return AUTHORIZATION_ERROR;
 
-            const std::string url_auth = "https://intrade.bar/auth/" + fragment_url;
+            const std::string url_auth = "https://"+ point + "/auth/" + fragment_url;
             const std::string body_auth;
             std::string response_auth;
             // по идее не обязательно
@@ -2060,7 +2072,7 @@ namespace intrade_bar {
         int connect(
                 const std::string &email,
                 const std::string &password) {
-            const std::string url_login = "https://intrade.bar/login";
+            const std::string url_login = "https://"+ point + "/login";
             const std::string body_login = "email=" + email + "&password=" + password + "&action=";
             std::string response_login;
             int err = post_request(url_login, body_login, http_headers_auth, response_login, true, true);
@@ -2081,13 +2093,14 @@ namespace intrade_bar {
                 /* ********************************************************** */
                 return err;
             }
-            const std::string str_auth("intrade.bar/auth/");
+            //const std::string str_auth("intrade.bar/auth/");
+            const std::string str_auth(point + "/auth/");
             std::string fragment_url;
             if(!get_string_fragment(response_login, str_auth, "'", fragment_url)) return AUTHORIZATION_ERROR;
             if(!get_string_fragment(fragment_url, "id=", "&", user_id)) return AUTHORIZATION_ERROR;
             if(!get_string_fragment(fragment_url, "hash=", user_hash)) return AUTHORIZATION_ERROR;
 
-            const std::string url_auth = "https://intrade.bar/auth/" + fragment_url;
+            const std::string url_auth = "https://" + point + "/auth/" + fragment_url;
             const std::string body_auth;
             std::string response_auth;
             /* по идее не обязательно */
@@ -2218,17 +2231,20 @@ namespace intrade_bar {
         }
 
         /** \brief Конструктор с указанием всех файлов без авторизации
+         * \param user_point Точка доступа к брокерку, равна intrade.bar или 1.intrade.bar
          * \param user_sert_file Файл-сертификат
          * \param user_cookie_file Файл для записи cookie
          * \param user_bets_log_file Файл для записи логов работы со сделками
          * \param user_work_log_file Файл для записи логов работы http клиента
          */
         IntradeBarHttpApi(
+                const std::string &user_point = "1.intrade.bar",
                 const std::string &user_sert_file = "curl-ca-bundle.crt",
                 const std::string &user_cookie_file = "intrade-bar.cookie",
                 const std::string &user_file_name_bets_log = "logger/intrade-bar-bets.log",
                 const std::string &user_file_name_work_log = "logger/intrade-bar-https-work.log") {
             curl_global_init(CURL_GLOBAL_ALL);
+
             file_name_bets_log = user_file_name_bets_log;
             file_name_work_log = user_file_name_work_log;
             /* логируем */
@@ -2236,6 +2252,7 @@ namespace intrade_bar {
             j_work["method"] =  "IntradeBarHttpApi";
             intrade_bar::Logger::log(file_name_work_log, j_work);
 
+            point = user_point;
             sert_file = user_sert_file;
             cookie_file = user_cookie_file;
             init_profile_state();
@@ -2264,14 +2281,17 @@ namespace intrade_bar {
                 if(j["work_log_file"] != nullptr) {
                     file_name_work_log = j["work_log_file"];
                 }
+                if(j["point"] != nullptr) {
+                    point = j["point"];
+                }
             }
             catch(...) {
                 std::cerr
-                    << "json error: key <sert_file> or <cookie_file>"
+                    << "json error: key <sert_file>, <cookie_file>, <bets_log_file>, <work_log_file>, <point>"
                     << std::endl;
                 /* записываем лог *********************************************/
                 json j_work;
-                j_work["error"] = "json error: key <sert_file> or <cookie_file>";
+                j_work["error"] = "json error: key <sert_file>, <cookie_file>, <bets_log_file>, <work_log_file>, <point>";
                 j_work["method"] =  "IntradeBarHttpApi";
                 intrade_bar::Logger::log(file_name_work_log, j_work);
                 /* ********************************************************** */

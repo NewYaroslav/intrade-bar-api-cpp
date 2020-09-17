@@ -52,6 +52,8 @@ namespace intrade_bar {
         using WssClient = SimpleWeb::SocketClient<SimpleWeb::WSS>;
         using json = nlohmann::json;
 
+        std::string point = "1.intrade.bar";
+
         std::array<std::shared_ptr<WssClient>, intrade_bar_common::CURRENCY_PAIRS>  clients;    /**< Webclosket Клиенты */
         std::shared_ptr<SimpleWeb::io_context> io_service;
         std::future<void> client_future;        /**< Поток соединения */
@@ -299,12 +301,14 @@ namespace intrade_bar {
     public:
 
         /** \brief Конструктор класс для получения потока котировок
+         * \param user_point Точка доступа к брокерку, равна intrade.bar или 1.intrade.bar
          * \param sert_file Файл-сертификат. По умолчанию используется от curl: curl-ca-bundle.crt
          * \param file_websocket_log Файл для записи логов.
          */
         QuotationsStream(
+                std::string stream_point = "1.intrade.bar",
                 std::string sert_file = "curl-ca-bundle.crt",
-                std::string file_websocket_log = "logger/intrade-bar-websocket.log") {
+                std::string file_websocket_log = "logger/intrade-bar-websocket.log") : point(stream_point) {
             /* инициализируем переменные */
             file_name_websocket_log = file_websocket_log;
             offset_timestamp = 0;
@@ -323,14 +327,14 @@ namespace intrade_bar {
 
             /* запустим соединение в отдельном потоке */
             client_future = std::async(std::launch::async,[&, sert_file]() {
-                const std::string point("intrade.bar/fxconnect");
+                const std::string ws_point(point + "/fxconnect");
                 while(true) {
                     try {
                         io_service = std::make_shared<SimpleWeb::io_context>();
                         /* создадим соединения для каждой валютной пары */
                         for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                             clients[s] = std::make_shared<WssClient>(
-                                    point,
+                                    ws_point,
                                     true,
                                     std::string(),
                                     std::string(),

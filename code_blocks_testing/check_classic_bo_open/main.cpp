@@ -41,6 +41,7 @@ int main() {
     }
 
     while(true) {
+        double open_classic_price = 0;
         double open_classic_delay = 0;
         uint64_t id_deal = 0;
         xtime::timestamp_t timestamp_open = 0;
@@ -54,6 +55,7 @@ int main() {
             intrade_bar_common::TypesBinaryOptions::CLASSIC,
             type_deals,
             intrade_bar_common::get_classic_bo_closing_timestamp(timestamp),
+            open_classic_price,
             open_classic_delay,
             id_deal,
             timestamp_open);

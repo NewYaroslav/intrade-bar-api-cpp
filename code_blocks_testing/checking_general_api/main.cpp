@@ -13,7 +13,9 @@ int main() {
     auth_file.close();
 
     const uint32_t number_bars = 15;
-    intrade_bar::IntradeBarApi api(number_bars,[&](
+    intrade_bar::IntradeBarApi api(
+                    "1.intrade.bar",
+                    number_bars,[&](
                     const std::map<std::string,xquotes_common::Candle> &candles,
                     const intrade_bar::IntradeBarApi::EventType event,
                     const xtime::timestamp_t timestamp) {
