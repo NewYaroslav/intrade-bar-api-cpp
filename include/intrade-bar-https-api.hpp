@@ -2124,8 +2124,9 @@ namespace intrade_bar {
                 const bool is_demo_account,
                 const bool is_rub_currency) {
             int err = OK;
-            const uint32_t attempts = 10;
-            for(uint32_t n = 0; n < attempts; ++n) {
+            const uint32_t attempts_connect = 2;
+			const uint32_t attempts = 5;
+            for(uint32_t n = 0; n < attempts_connect; ++n) {
                 if((err = connect(email, password)) == OK) break;
                 std::this_thread::sleep_for(std::chrono::milliseconds(5000));
             }
@@ -2159,12 +2160,13 @@ namespace intrade_bar {
          * \return вернет код ошибки или 0 в случае успешного завершения
          */
         int connect(json &j) {
-            const uint32_t attempts = 10;
+            const uint32_t attempts_connect = 2;
+			const uint32_t attempts = 5;
             try {
                 std::string email = j["email"];
                 std::string password = j["password"];
                 int err = OK;
-                for(uint32_t n= 0; n < attempts; ++n) {
+                for(uint32_t n = 0; n < attempts_connect; ++n) {
                     if((err = connect(email, password)) == OK) break;
                     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                 }
