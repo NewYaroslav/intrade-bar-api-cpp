@@ -32,7 +32,7 @@ int main() {
                     const std::map<std::string,xquotes_common::Candle> &candles,
                     const intrade_bar::IntradeBarApi::EventType event,
                     const xtime::timestamp_t timestamp) {
-
+        static bool is_bet = false;
         static bool is_stream = false;
         /* получаем бар по валютной паре GBPCAD из candles */
         xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("GBPCAD", candles);
@@ -53,11 +53,12 @@ int main() {
                 api.update_balance();
                 std::cout << "balance: " << api.get_balance() << std::endl;
             }
+            is_bet = false;
         } else
         /* получено событие НОВЫЙ ТИК */
         if(event == intrade_bar::IntradeBarApi::EventType::NEW_TICK) {
             is_stream = true;
-            if(1) {
+            if(0) {
                 std::cout << "new tick: " << xtime::get_str_date_time(timestamp) << std::endl;
                 if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                     std::cout
@@ -70,14 +71,14 @@ int main() {
             }
 
 #if(1)
-            static bool is_bet = false;
+
             if(!is_bet) {
                 uint64_t api_bet_id = 0;
                 //a/pi.open_bo("EURUSD", "test", 50, intrade_bar_common::BUY, 180, api_id);
                 //std::cout << "api_id " << api_bet_id << std::endl;
 
                 int err = api.open_bo(
-                        "EURUSD",
+                        "USDJPY",
                         "test",
                         50,
                         intrade_bar_common::TypesBinaryOptions::SPRINT,

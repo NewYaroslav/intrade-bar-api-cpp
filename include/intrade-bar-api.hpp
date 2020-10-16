@@ -805,6 +805,20 @@ namespace intrade_bar {
         inline double get_price(const size_t symbol_index) {
             return websocket_api.get_price(symbol_index);
         }
+
+        /** \brief Установить количество попыток повторно открыть сделку
+         * \param value Количество попыток повторно открыть сделку
+         */
+        inline void set_repeated_bet_attempts(const uint32_t value) {
+            http_api.set_repeated_bet_attempts(value);
+        }
+
+        /** \brief Установить задержку между попытками повторно открыть сделку
+         * \param value Задержка между попытками повторно открыть сделку
+         */
+        inline void set_repeated_bet_attempts_delay(const double value) {
+            http_api.set_repeated_bet_attempts_delay(value);
+        }
     };
 }
 

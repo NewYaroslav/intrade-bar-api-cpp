@@ -57,12 +57,12 @@ namespace intrade_bar {
 
         /// Состояния сделки
         enum class BetStatus {
-            UNKNOWN_STATE,
-            OPENING_ERROR,
-            CHECK_ERROR,        /**< Ошибка проверки результата сделки */
-            WAITING_COMPLETION,
-            WIN,
-            LOSS,
+            UNKNOWN_STATE,                          ///< Неопределенное состояние
+            OPENING_ERROR,                          ///< Ошибка открытия
+            CHECK_ERROR,                            ///< Ошибка проверки результата сделки
+            WAITING_COMPLETION,                     ///< Ожидание завершения сделки
+            WIN,                                    ///< Удачная сделка
+            LOSS,                                   ///< Неудачная сделка
         };
 
         /** \brief Класс для хранения информации по сделке
@@ -123,14 +123,21 @@ namespace intrade_bar {
         }
 
         std::thread dynamic_update_account_thread;                      /**< Поток для обновления состояния аккаунта */
-        std::atomic<int> bets_counter = ATOMIC_VAR_INIT(0);             /**< Счетчик одновременно открытых сделок */
+        std::atomic<int64_t> bets_counter = ATOMIC_VAR_INIT(0);         /**< Счетчик одновременно открытых сделок */
         std::atomic<double> bets_last_timestamp = ATOMIC_VAR_INIT(1.0d);/**< Последняя метка времени открытия сделки */
         std::atomic<double> bets_delay = ATOMIC_VAR_INIT(1.0d);         /**< Задержка между открытием сделок */
 
+        std::atomic<int> repeated_bet_attempts = ATOMIC_VAR_INIT(0);    /**< Количество повторных попыток открытия сделок */
+        std::atomic<double> repeated_bet_attempts_delay = ATOMIC_VAR_INIT(1.0d);    /**< Задержка между повторным открытием */
+
         std::mutex bets_id_counter_mutex;
         uint64_t bets_id_counter = 0;   /**< Счетчик номера сделок, открытых через API */
-        std::mutex array_bets_mutex;    /**< Мьютекс для блокировки array_bets */
-        std::vector<Bet> array_bets;
+
+        //std::mutex array_bets_mutex;    /**< Мьютекс для блокировки array_bets */
+        //std::vector<Bet> array_bets;
+
+        std::mutex map_bets_mutex;          /**< Мьютекс для блокировки map_bets */
+        std::map<uint64_t, Bet> map_bets;   /**< Карта сделок */
 
         std::string sert_file = "curl-ca-bundle.crt";   /**< Файл сертификата */
         std::string cookie_file = "intrade-bar.cookie"; /**< Файл cookie */
@@ -894,8 +901,6 @@ namespace intrade_bar {
             return std::string(error_buffer);
         }
 
-
-
         /** \brief Открыть бинарный опицон
          * \param symbol_index Номер символа
          * \param amount Размер опицона
@@ -990,16 +995,15 @@ namespace intrade_bar {
                 false);
             if(err != OK) return err;
 
-            // std::cout << "response: " << response << std::endl;
-
             xtime::ftimestamp_t bet_end_time = xtime::get_ftimestamp();
             delay = (double)(bet_end_time - bet_start_time);
 
             // парсим 135890083 AUD/CAD up **:**:**, ** Aug 19 **:**:**, ** Aug 19 0.89512 1 USD
             std::size_t error_pos = response.find("error");
             std::size_t alert_pos = response.find("alert");
+
             if(error_pos != std::string::npos) return ERROR_RESPONSE;
-            else if(alert_pos != std::string::npos) return ALERT_RESPONSE;
+            if(alert_pos != std::string::npos) return ALERT_RESPONSE;
             if(response.size() < 10) return NO_ANSWER;
 
             /* находим метку времени и номер сделки */
@@ -1007,13 +1011,14 @@ namespace intrade_bar {
             std::size_t data_id_pos = get_string_fragment(response, "data-id=\"", "\"", str_data_id);
             std::size_t data_timeopen_pos = get_string_fragment(response, "data-timeopen=\"", "\"", str_data_timeopen);
             std::size_t data_rate_pos = get_string_fragment(response, "data-rate=\"", "\"", str_data_rate);
+
             if(data_id_pos == std::string::npos ||
                 data_timeopen_pos == std::string::npos ||
                 data_rate_pos == std::string::npos) return NO_ANSWER;
 
-            id_deal = atoi(str_data_id.c_str());
-            open_timestamp = atoi(str_data_timeopen.c_str());
-            open_price = atof(str_data_rate.c_str());
+            id_deal = std::stoi(str_data_id); //atoi(str_data_id.c_str());
+            open_timestamp = std::stoull(str_data_timeopen); //atoi(str_data_timeopen.c_str());
+            open_price = std::stod(str_data_rate); //atof(str_data_rate.c_str());
             return OK;
         }
 
@@ -1189,20 +1194,8 @@ namespace intrade_bar {
             new_bet.bo_type = bo_type;
 
             {
-                std::lock_guard<std::mutex> lock(array_bets_mutex);
-                array_bets.push_back(new_bet);
-                /* сортирнем список сделок */
-                if(!std::is_sorted(array_bets.begin(), array_bets.end(),
-                        []( const Bet &a,
-                            const Bet &b) {
-                            return a.api_bet_id < b.api_bet_id;
-                        })) {
-                    std::sort(array_bets.begin(), array_bets.end(),
-                        []( const Bet &a,
-                            const Bet &b) {
-                        return a.api_bet_id < b.api_bet_id;
-                    });;
-                }
+                std::lock_guard<std::mutex> lock(map_bets_mutex);
+                map_bets[api_bet_id] = new_bet;
             }
 
             /* запускаем асинхронное открытие сделки */
@@ -1226,17 +1219,23 @@ namespace intrade_bar {
                     double delay = 0;
                     double open_price = 0;
                     uint64_t id_deal = 0;
+                    int err_bo = 0;
 
-                    int err_bo = open_bo(
-                        symbol_index,
-                        amount,
-                        bo_type,
-                        contract_type,
-                        duration,
-                        open_price,
-                        delay,
-                        id_deal,
-                        open_timestamp);
+                    for(int i = 0; i < (repeated_bet_attempts + 1); ++i) {
+                        err_bo = open_bo(
+                            symbol_index,
+                            amount,
+                            bo_type,
+                            contract_type,
+                            duration,
+                            open_price,
+                            delay,
+                            id_deal,
+                            open_timestamp);
+                        if(err_bo == OK || err_bo == DATA_NOT_AVAILABLE || err_bo == INVALID_ARGUMENT) break;
+                        if(repeated_bet_attempts == 0) break;
+                        std::this_thread::sleep_for(std::chrono::milliseconds((uint32_t)((double)repeated_bet_attempts_delay * 1000.0d)));
+                    }
 
                     /* вызываем функцию для отправки неопределенного состояни */
                     if(callback != nullptr) callback(new_bet);
@@ -1258,23 +1257,22 @@ namespace intrade_bar {
                                 intrade_bar::Logger::log(file_name_bets_log, j_bet);
                             } catch(...){}
                         }
+
                         /* обновляем состояние сделки в массиве сделок */
                         {
-                            std::lock_guard<std::mutex> lock(array_bets_mutex);
-                            for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
-                                if(array_bets[i].api_bet_id == api_bet_id) {
-                                    array_bets[i].send_timestamp = start_timestamp;
-                                    array_bets[i].opening_timestamp = open_timestamp;
-                                    if(bo_type == TypesBinaryOptions::SPRINT) {
-                                        array_bets[i].closing_timestamp = open_timestamp + duration;
-                                    } else if(bo_type == TypesBinaryOptions::CLASSIC) {
-                                        array_bets[i].closing_timestamp = duration;
-                                    }
-                                    array_bets[i].broker_bet_id = id_deal;
-                                    array_bets[i].bet_status = BetStatus::OPENING_ERROR;
-                                    array_bets[i].open_price = open_price;
-                                    break;
+                            std::lock_guard<std::mutex> lock(map_bets_mutex);
+                            auto it_bet = map_bets.find(api_bet_id);
+                            if(it_bet != map_bets.end()) {
+                                it_bet->second.send_timestamp = start_timestamp;
+                                it_bet->second.opening_timestamp = open_timestamp;
+                                if(bo_type == TypesBinaryOptions::SPRINT) {
+                                    it_bet->second.closing_timestamp = open_timestamp + duration;
+                                } else if(bo_type == TypesBinaryOptions::CLASSIC) {
+                                    it_bet->second.closing_timestamp = duration;
                                 }
+                                it_bet->second.broker_bet_id = id_deal;
+                                it_bet->second.bet_status = BetStatus::OPENING_ERROR;
+                                it_bet->second.open_price = open_price;
                             }
                         }
 
@@ -1289,7 +1287,9 @@ namespace intrade_bar {
                         new_bet.is_demo_account = is_demo_account;
                         new_bet.is_rub_currency = is_rub_currency;
                         new_bet.symbol_name = symbol;
+                        new_bet.note = note;
                         new_bet.opening_timestamp = open_timestamp;
+                        new_bet.send_timestamp = start_timestamp;
                         if(bo_type == TypesBinaryOptions::SPRINT) {
                             new_bet.closing_timestamp = open_timestamp + duration;
                         } else if(bo_type == TypesBinaryOptions::CLASSIC) {
@@ -1306,22 +1306,20 @@ namespace intrade_bar {
 
                     /* обновляем состояние сделки в массиве сделок */
                     {
-                        std::lock_guard<std::mutex> lock(array_bets_mutex);
-                        for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
-                            if(array_bets[i].api_bet_id == api_bet_id) {
-                                array_bets[i].opening_timestamp = open_timestamp;
-                                if(bo_type == TypesBinaryOptions::SPRINT) {
-                                    array_bets[i].closing_timestamp = open_timestamp + duration;
-                                } else if(bo_type == TypesBinaryOptions::CLASSIC) {
-                                    array_bets[i].closing_timestamp = duration;
-                                }
-                                array_bets[i].broker_bet_id = id_deal;
-                                array_bets[i].bet_status = BetStatus::WAITING_COMPLETION;
-
-                                /* вызываем callback для передачи состояния WAITING_COMPLETION */
-                                if(callback != nullptr) callback(array_bets[i]);
-                                break;
+                        std::lock_guard<std::mutex> lock(map_bets_mutex);
+                        auto it_bet = map_bets.find(api_bet_id);
+                        if(it_bet != map_bets.end()) {
+                            it_bet->second.opening_timestamp = open_timestamp;
+                            if(bo_type == TypesBinaryOptions::SPRINT) {
+                                it_bet->second.closing_timestamp = open_timestamp + duration;
+                            } else if(bo_type == TypesBinaryOptions::CLASSIC) {
+                                it_bet->second.closing_timestamp = duration;
                             }
+                            it_bet->second.broker_bet_id = id_deal;
+                            it_bet->second.bet_status = BetStatus::WAITING_COMPLETION;
+
+                            /* вызываем callback для передачи состояния WAITING_COMPLETION */
+                            if(callback != nullptr) callback(it_bet->second);
                         }
                     }
 
@@ -1383,8 +1381,8 @@ namespace intrade_bar {
                             for(uint32_t attempt = 0; attempt < MAX_ATTEMPTS; ++attempt) {
                                 int err = check_bo(id_deal, price, profit);
                                 if(err == OK) break;
-                                /* ждем 10 сек в случае неудачной попытки */
-                                std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+                                /* ждем 5 сек в случае неудачной попытки */
+                                std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                                 if(is_request_future_shutdown) return;
                             }
 
@@ -1393,18 +1391,16 @@ namespace intrade_bar {
 
                             /* обновляем состояние сделки в массиве сделок */
                             {
-                                std::lock_guard<std::mutex> lock(array_bets_mutex);
-                                for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
-                                    if(array_bets[i].api_bet_id == api_bet_id) {
-                                        if(err != OK) array_bets[i].bet_status = BetStatus::CHECK_ERROR;
-                                        else if(profit > 0) array_bets[i].bet_status = BetStatus::WIN;
-                                        else array_bets[i].bet_status = BetStatus::LOSS;
-                                        array_bets[i].profit = profit;
-                                        array_bets[i].payout = amount == 0 ? 0 : profit/amount;
-                                        array_bets[i].close_price = price;
-                                        array_bets[i].amount = amount;
-                                        break;
-                                    }
+                                std::lock_guard<std::mutex> lock(map_bets_mutex);
+                                auto it_bet = map_bets.find(api_bet_id);
+                                if(it_bet != map_bets.end()) {
+                                    if(err != OK) it_bet->second.bet_status = BetStatus::CHECK_ERROR;
+                                    else if(profit > 0) it_bet->second.bet_status = BetStatus::WIN;
+                                    else it_bet->second.bet_status = BetStatus::LOSS;
+                                    it_bet->second.profit = profit;
+                                    it_bet->second.payout = amount == 0 ? 0 : profit/amount;
+                                    it_bet->second.close_price = price;
+                                    it_bet->second.amount = amount;
                                 }
                             }
 
@@ -1423,6 +1419,7 @@ namespace intrade_bar {
                             new_bet.is_demo_account = is_demo_account;
                             new_bet.is_rub_currency = is_rub_currency;
                             new_bet.symbol_name = symbol;
+                            new_bet.note = note;
                             new_bet.opening_timestamp = open_timestamp;
                             if(bo_type == TypesBinaryOptions::SPRINT) {
                                 new_bet.closing_timestamp = open_timestamp + duration;
@@ -1533,12 +1530,20 @@ namespace intrade_bar {
          */
         int get_bet(Bet &bet, const uint64_t api_bet_id) {
             {
+#if(0)
                 std::lock_guard<std::mutex> lock(array_bets_mutex);
                 for(int64_t i = (array_bets.size() - 1); i >= 0; --i) {
                     if(array_bets[i].api_bet_id == api_bet_id) {
                         bet = array_bets[i];
                         return OK;
                     }
+                }
+#endif
+                std::lock_guard<std::mutex> lock(map_bets_mutex);
+                auto it_bet = map_bets.find(api_bet_id);
+                if(it_bet != map_bets.end()) {
+                    bet = it_bet->second;
+                    return OK;
                 }
             }
             return DATA_NOT_AVAILABLE;
@@ -1547,11 +1552,21 @@ namespace intrade_bar {
         /** \brief Очистить массив сделок
          */
         void clear_bets_array() {
+#if(0)
             {
                 std::lock_guard<std::mutex> lock(bets_id_counter_mutex);
                 std::lock_guard<std::mutex> lock2(array_bets_mutex);
                 array_bets.clear();
                 bets_id_counter = 0;
+            }
+#endif
+            {
+                std::lock_guard<std::mutex> lock(bets_id_counter_mutex);
+                bets_id_counter = 0;
+            }
+            {
+                std::lock_guard<std::mutex> lock(map_bets_mutex);
+                map_bets.clear();
             }
         }
 
@@ -1560,6 +1575,20 @@ namespace intrade_bar {
          */
         inline void set_bets_delay(const double delay) {
             bets_delay = delay;
+        }
+
+        /** \brief Установить количество попыток повторно открыть сделку
+         * \param value Количество попыток повторно открыть сделку
+         */
+        inline void set_repeated_bet_attempts(const uint32_t value) {
+            repeated_bet_attempts = value;
+        }
+
+        /** \brief Установить задержку между попытками повторно открыть сделку
+         * \param value Задержка между попытками повторно открыть сделку
+         */
+        inline void set_repeated_bet_attempts_delay(const double value) {
+            repeated_bet_attempts_delay = value;
         }
 
         /** \brief Получить параметры торговли
