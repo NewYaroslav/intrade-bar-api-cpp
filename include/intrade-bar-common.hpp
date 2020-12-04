@@ -149,6 +149,19 @@ namespace intrade_bar_common {
          * (валютные пары с JPY имеют множитель 1000)
          */
 
+    static const std::array<uint32_t, CURRENCY_PAIRS>
+        precision_currency_pairs = {
+        5,3,5,5,
+        5,3,5,5,
+        5,5,3,3,
+        3,5,5,3,
+        3,5,5,5,
+        5,5,5,5,
+        5,5,
+    };  /**< Массив количество знаков после запятой валютных пар
+         * (валютные пары с JPY имеют количество знаков 3)
+         */
+
     const std::array<xtime::timestamp_t, CURRENCY_PAIRS>
         start_date_currency_pairs = {
             xtime::get_timestamp(3,12,2001), // EURUSD
@@ -242,6 +255,19 @@ namespace intrade_bar_common {
         }
         return "";
     }
+
+    /** \brief Класс для хранения данных тика
+     */
+    class StreamTick {
+	public:
+		std::string symbol;
+		double price = 0;
+		double bid = 0;
+		double ask = 0;
+		xtime::ftimestamp_t timestamp = 0;
+        uint32_t precision = 0;
+		StreamTick() {};
+	};
 
     class PrintThread: public std::ostringstream {
     private:

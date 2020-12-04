@@ -753,6 +753,430 @@ namespace intrade_bar {
         }
 
     };
+
+    /** \brief Класс потока котировок
+     */
+    class TicksStream {
+    private:
+        using WssClient = SimpleWeb::SocketClient<SimpleWeb::WSS>;
+        using json = nlohmann::json;
+
+        std::string point = "1.intrade.bar";
+        std::string sert_file = "curl-ca-bundle.crt";
+
+        /* порядо расположения объектов важен! иначе баг! */
+        //std::mutex client_connection_mutex;
+        //std::mutex client_mutex;
+        //std::mutex io_service_mutex;
+
+        std::shared_ptr<WssClient> client;                            /**< Клиент вебсокета */
+        //std::shared_ptr<WssClient::Connection> client_connection;   /**< Соединения клиента вебсокета */
+        //std::shared_ptr<SimpleWeb::io_context> io_service;          /**< Сервис клиента вебсокета. В данном случае нужен для избежания бага зависания при переподключении вебсокета */
+        //std::future<void> client_future;                            /**< Поток соединения */
+        std::thread client_thread;
+
+        std::atomic<bool> is_client_thread;
+        std::atomic<bool> is_websocket_start;   /**< Состояние запуска работы соединения */
+        std::atomic<bool> is_stream_init;       /**< Состояние потока котировок */
+        std::atomic<bool> is_error;             /**< Ошибка соединения */
+        std::atomic<bool> is_shutdown;          /**< Флаг для закрытия соединения */
+
+        const uint32_t array_offset_timestamp_size = 256;
+        std::array<xtime::ftimestamp_t, 256> array_offset_timestamp;    /**< Массив смещения метки времени */
+        uint8_t index_array_offset_timestamp = 0;                       /**< Индекс элемента массива смещения метки времени */
+        uint32_t index_array_offset_timestamp_count = 0;
+        xtime::ftimestamp_t last_offset_timestamp_sum = 0;
+        xtime::ftimestamp_t last_tick_time = 0;
+        std::atomic<double> offset_timestamp;                           /**< Смещение метки времени */
+        std::atomic<double> last_server_timestamp;
+
+        /** \brief Обновить смещение метки времени
+         *
+         * Данный метод использует оптимизированное скользящее среднее
+         * для выборки из 256 элеметов для нахождения смещения метки времени сервера
+         * относительно времени компьютера
+         * \param offset смещение метки времени
+         */
+        inline void update_offset_timestamp(const xtime::ftimestamp_t offset) {
+            if(index_array_offset_timestamp_count != array_offset_timestamp_size) {
+                array_offset_timestamp[index_array_offset_timestamp] = offset;
+                index_array_offset_timestamp_count = (uint32_t)index_array_offset_timestamp + 1;
+                last_offset_timestamp_sum += offset;
+                offset_timestamp = last_offset_timestamp_sum / (xtime::ftimestamp_t)index_array_offset_timestamp_count;
+                ++index_array_offset_timestamp;
+                return;
+            }
+            /* находим скользящее среднее смещения метки времени сервера относительно компьютера */
+            last_offset_timestamp_sum = last_offset_timestamp_sum +
+                (offset - array_offset_timestamp[index_array_offset_timestamp]);
+            array_offset_timestamp[index_array_offset_timestamp++] = offset;
+            offset_timestamp = last_offset_timestamp_sum/
+                (xtime::ftimestamp_t)array_offset_timestamp_size;
+        }
+
+        /** \brief Парсер сообщения от вебсокета
+         * \param response Ответ от сервера
+         */
+        void parser(const std::string &response) {
+            if(!is_client_thread) return;
+            /* Пример сообщения с котировками
+             * {"Updates":1585580369,"ask":0.872,"bid":0.871861,"symbol":"AUD\/CAD"}
+             */
+            try {
+                json j = json::parse(response);
+                const std::string symbol_name = j["symbol"];
+                auto it = extended_name_currency_pairs_indx.find(symbol_name);
+                if(it == extended_name_currency_pairs_indx.end()) return;
+                const size_t symbol_index = it->second;
+
+                /* проверяем, проинициализированы ли все валютные пары */
+                if(on_start != nullptr && !is_stream_init) on_start();
+                is_stream_init = true;
+
+                /* получаем метку времени */
+                xtime::ftimestamp_t tick_time = j["Updates"];
+
+                /* проверяем, не поменялась ли метка времени */
+                if(last_tick_time < tick_time) {
+                    /* если метка времени поменялась, найдем время сервера */
+                    xtime::ftimestamp_t pc_time = xtime::get_ftimestamp();
+                    xtime::ftimestamp_t offset_time = tick_time - pc_time;
+                    update_offset_timestamp(offset_time);
+                    last_tick_time = tick_time;
+
+                    /* запоминаем последнюю метку времени сервера */
+                    last_server_timestamp = tick_time;
+                }
+
+                StreamTick tick;
+
+                tick.symbol = currency_pairs[symbol_index];
+                tick.timestamp = get_server_timestamp();
+
+                /* читаем значение цены */
+                tick.bid = j["bid"];
+                tick.ask = j["ask"];
+                tick.precision = precision_currency_pairs[symbol_index];
+                const double price = (tick.bid + tick.ask) / 2.0d;
+
+                /* округляем цену */
+                tick.price = (double)((double)((uint64_t)((price *
+                    (double)pricescale_currency_pairs[symbol_index])
+                    + 0.5d)) /
+                    (double)pricescale_currency_pairs[symbol_index]);
+
+
+                if(on_tick != nullptr && is_client_thread) on_tick(tick);
+            }
+            catch(const json::parse_error& e) {
+                is_error = true;
+            }
+            catch(json::out_of_range& e) {
+                is_error = true;
+            }
+            catch(json::type_error& e) {
+                is_error = true;
+            }
+            catch(...) {
+                is_error = true;
+            }
+        }
+
+    public:
+
+        std::function<void(const StreamTick &tick)> on_tick = nullptr;
+        std::function<void()> on_start = nullptr;
+        std::function<void()> on_stop = nullptr;
+
+        /** \brief Конструктор класс для получения потока котировок
+         * \param stream_point Точка доступа к брокерку, равна intrade.bar или 1.intrade.bar
+         * \param stream_sert_file Файл-сертификат. По умолчанию используется от curl: curl-ca-bundle.crt
+         */
+        TicksStream(
+                const std::string &stream_point = "1.intrade.bar",
+                const std::string &stream_sert_file = "curl-ca-bundle.crt") :
+                point(stream_point), sert_file(stream_sert_file) {
+            offset_timestamp = 0;
+            is_client_thread = false;
+            is_websocket_start = false;
+            is_stream_init = false;
+            is_shutdown = false;
+            is_error = false;
+        };
+
+        bool start(const std::string &symbol_name) {
+            if(is_client_thread) return false;
+
+            auto it_symbol = currency_pairs_indx.find(symbol_name);
+            if(it_symbol == currency_pairs_indx.end()) return false;
+            const size_t symbol_index = it_symbol->second;
+
+            const std::string ws_point(point + "/fxconnect");
+            const std::string ws_sert_file(sert_file);
+            const std::string ws_init_message(extended_name_currency_pairs[symbol_index]);
+
+            /* запустим соединение в отдельном потоке */
+            //client_future = std::async(std::launch::async,[&, symbol_name, symbol_index]() {
+            client_thread = std::thread([&,
+                    symbol_name, symbol_index,
+                    ws_point, ws_sert_file, ws_init_message]() {
+                while(true) {
+                    try {
+                        client = std::make_shared<WssClient>(
+                            ws_point,
+                            true,
+                            std::string(),
+                            std::string(),
+                            std::string(ws_sert_file));
+
+                        /* читаем собщения, которые пришли */
+                        client->on_message =
+                                [&](std::shared_ptr<WssClient::Connection> connection,
+                                std::shared_ptr<WssClient::InMessage> message) {
+                            parser(message->string());
+                        };
+
+                        client->on_open =
+                            [&, symbol_name, symbol_index](std::shared_ptr<WssClient::Connection> connection) {
+                            //std::string init_message(intrade_bar_common::extended_name_currency_pairs[symbol_index]);
+                            connection->send(ws_init_message);
+                        };
+
+                        client->on_close =
+                                [&](std::shared_ptr<WssClient::Connection> /*connection*/,
+                                int status, const std::string & /*reason*/) {
+                            is_error = true;
+                            is_stream_init = false;
+                            std::cerr
+                                << "intrade.bar ticks stream " << symbol_name
+                                << " wss close: "
+                                "closed connection with status code " << status
+                                << std::endl;
+                        };
+
+                        // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
+                        client->on_error =
+                                [&, symbol_name](std::shared_ptr<WssClient::Connection> /*connection*/,
+                                const SimpleWeb::error_code &ec) {
+                            is_error = true;
+                            is_stream_init = false;
+                            std::cerr
+                                << "intrade.bar ticks stream " << symbol_name
+                                << " wss error: " << ec
+                                << std::endl;
+                        };
+
+                        is_websocket_start = true;
+                        if(is_shutdown) {
+                            is_websocket_start = false;
+                            break;
+                        }
+                        client->start();
+                        if(client) client.reset();
+                        is_websocket_start = false;
+
+                        if(on_stop != nullptr) on_stop();
+                        is_stream_init = false;
+                    }
+                    catch (std::exception& e) {
+                        is_stream_init = false;
+                        is_error = true;
+                        std::cerr << "intrade.bar error, TicksStream()--->start, std::exception, what: " << e.what() << std::endl;
+                    }
+                    catch (...) {
+                        is_stream_init = false;
+                        is_error = true;
+                        std::cerr << "intrade.bar error, TicksStream()--->start, unknown error" << std::endl;
+                    }
+                    if(is_shutdown) break;
+					const uint64_t RECONNECT_DELAY = 5000;
+					std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
+                } // while
+            });
+            client_thread.detach();
+
+            is_client_thread = true;
+            return true;
+        }
+
+        void stop() {
+            /* этот вариант единственный, который работает! */
+            //::TerminateThread((HANDLE)client_thread.native_handle(), 0);
+            //if(on_stop != nullptr) on_stop();
+            //is_client_thread = false;
+
+            /* ставим флаг сброса соединения */
+            is_shutdown = true;
+
+            std::shared_ptr<WssClient> client_ptr = std::atomic_load(&client);
+            if(client_ptr) {
+                client_ptr->stop();
+            }
+            is_client_thread = false;
+
+            int tick = 0;
+            while(is_websocket_start) {
+                ++tick;
+                if(tick >= 20) {
+                    try {
+                        ::TerminateThread((HANDLE)client_thread.native_handle(), 0);
+                    }
+                    catch(...) {};
+                    break;
+                }
+                const uint64_t RECONNECT_DELAY = 100;
+                std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
+            }
+        };
+
+        ~TicksStream() {
+            if(!is_client_thread) return;
+
+            /* ставим флаг сброса соединения */
+            is_shutdown = true;
+
+            int tick = 0;
+            /* ждем инициализации вебсокета */
+            while(!is_websocket_start) {
+                ++tick;
+                if(tick >= 50) {
+                    try {
+                        //DWORD result =
+                        ::TerminateThread((HANDLE)client_thread.native_handle(), 0);
+                        if(on_stop != nullptr) on_stop();
+                    }
+                    catch(...) {};
+                    break;
+                }
+                const uint64_t RECONNECT_DELAY = 100;
+                std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
+            }
+
+#if(0)
+            /* ждем инициализации вебсокета */
+            while(!is_websocket_start) {
+                const uint64_t RECONNECT_DELAY = 100;
+                std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
+            }
+
+            /* ставим флаг сброса соединения */
+            is_shutdown = true;
+
+            /*
+            std::shared_ptr<WssClient> client_ptr = std::atomic_load(&client);
+            if(client_ptr) {
+                {
+                    std::lock_guard<std::mutex> lock(client_connection_mutex);
+                    if(client_connection) client_connection->send_close(1000);
+                }
+                client_ptr->stop();
+            }
+            */
+
+
+            /* добавили внешний io_service из-за бага зависания
+             * тут останавливаем работу io_service и ждем состояние флага
+             * is_websocket_init, соответствующее деинициализации
+             */
+            {
+                std::shared_ptr<SimpleWeb::io_context> io_service_ptr = std::atomic_load(&io_service);
+                if(io_service_ptr) {
+                    //std::cerr << "~TicksStream() i2 " << std::addressof(*this) << std::endl;
+                    io_service_ptr->stop();
+                    while(is_websocket_start) {
+                        const uint64_t RECONNECT_DELAY = 100;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(RECONNECT_DELAY));
+                    }
+                    //std::cerr << "~TicksStream() i3 " << std::addressof(*this) << std::endl;
+                    //std::lock_guard<std::mutex> lock(io_service_mutex);
+                    //io_service_ptr.reset();
+                    //std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+            }
+
+            //std::cerr << "~TicksStream() v " << std::addressof(*this) << std::endl;
+
+            if(client_future.valid()) {
+                try {
+                    client_future.wait();
+                    client_future.get();
+                }
+                catch(const std::exception &e) {
+                    std::cerr << "intrade.bar error, ~TicksStream(), what: " << e.what() << std::endl;
+                }
+                catch(...) {
+                    std::cerr << "intrade.bar error, ~TicksStream()" << std::endl;
+                }
+            }
+            //std::cerr << "~TicksStream() e " << std::addressof(*this) << std::endl;
+#endif
+        };
+
+        /** \brief Состояние соединения
+         * \return вернет true, если соединение есть
+         */
+        inline bool connected() {
+            return is_stream_init;
+        }
+
+        /** \brief Подождать соединение
+         *
+         * Данный метод ждет, пока не установится соединение
+         * \return вернет true, если соединение есть, иначе произошла ошибка
+         */
+        inline bool wait() {
+            uint32_t tick = 0;
+            while(!is_error && !is_stream_init && !is_shutdown) {
+				std::this_thread::yield();
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                ++tick;
+                const uint32_t MAX_TICK = 10*100*5;
+                if(tick > MAX_TICK) {
+                    is_error = true;
+                    return is_stream_init;
+                }
+            }
+            return is_stream_init;
+        }
+
+        /** \brief Получить метку времени сервера
+         *
+         * Данный метод возвращает метку времени сервера. Часовая зона: UTC/GMT
+         * \return Метка времени сервера
+         */
+        inline xtime::ftimestamp_t get_server_timestamp() {
+            return xtime::get_ftimestamp() + offset_timestamp;
+        }
+
+        /** \brief Получить последнюю метку времени сервера
+         *
+         * Данный метод возвращает последнюю полученную метку времени сервера. Часовая зона: UTC/GMT
+         * \return Метка времени сервера
+         */
+        inline xtime::ftimestamp_t get_last_server_timestamp() {
+            return last_server_timestamp;
+        }
+
+        /** \brief Получить смещение метки времени ПК
+         * \return Смещение метки времени ПК
+         */
+        inline xtime::ftimestamp_t get_offset_timestamp() {
+            return offset_timestamp;
+        }
+
+        /** \brief Проверить наличие ошибки
+         * \return вернет true, если была ошибка
+         */
+        inline bool check_error() {
+            return is_error;
+        }
+
+        /** \brief Очистить состояние ошибки
+         */
+        inline void clear_error() {
+            is_error = false;
+        }
+    };
 }
 
 #endif // INTRADE_BAR_WEBSOCKET_API_V2_HPP_INCLUDED
