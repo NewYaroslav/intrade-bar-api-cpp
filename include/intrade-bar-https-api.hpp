@@ -63,6 +63,7 @@ namespace intrade_bar {
             WAITING_COMPLETION,                     ///< Ожидание завершения сделки
             WIN,                                    ///< Удачная сделка
             LOSS,                                   ///< Неудачная сделка
+            STANDOFF,                               ///< Ничья
         };
 
         /** \brief Класс для хранения информации по сделке
@@ -1389,12 +1390,15 @@ namespace intrade_bar {
                             /* уменьшаем счетчик бинарных опционов */
                             bets_counter -= 1;
 
+                            const int diff_price = (int)(((price - open_price) * 100000.0d) + 0.5d);
+
                             /* обновляем состояние сделки в массиве сделок */
                             {
                                 std::lock_guard<std::mutex> lock(map_bets_mutex);
                                 auto it_bet = map_bets.find(api_bet_id);
                                 if(it_bet != map_bets.end()) {
                                     if(err != OK) it_bet->second.bet_status = BetStatus::CHECK_ERROR;
+                                    else if(diff_price == 0) it_bet->second.bet_status = BetStatus::STANDOFF; // price == open_price
                                     else if(profit > 0) it_bet->second.bet_status = BetStatus::WIN;
                                     else it_bet->second.bet_status = BetStatus::LOSS;
                                     it_bet->second.profit = profit;
@@ -1411,11 +1415,13 @@ namespace intrade_bar {
                             new_bet.payout = amount == 0 ? 0 : profit/amount;
                             new_bet.api_bet_id = api_bet_id;
                             if(err != OK) new_bet.bet_status = BetStatus::CHECK_ERROR;
+                            else if(diff_price == 0) new_bet.bet_status = BetStatus::STANDOFF; // price == open_price
                             else if(profit > 0) new_bet.bet_status = BetStatus::WIN;
                             else new_bet.bet_status = BetStatus::LOSS;
                             new_bet.contract_type = contract_type;
                             new_bet.duration = duration;
                             new_bet.close_price = price;
+                            new_bet.open_price = open_price;
                             new_bet.is_demo_account = is_demo_account;
                             new_bet.is_rub_currency = is_rub_currency;
                             new_bet.symbol_name = symbol;
