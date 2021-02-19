@@ -23,7 +23,7 @@ int main() {
         xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle("GBPCHF", candles);
         /* получено событие ПОЛУЧЕНЫ ИСТОРИЧЕСКИЕ ДАННЫЕ */
         if(event == intrade_bar::IntradeBarApi::EventType::HISTORICAL_DATA_RECEIVED) {
-#           if(1)
+#           if(0)
             std::cout << "history : " << xtime::get_str_date_time(timestamp);// << std::endl;
             if(intrade_bar::IntradeBarApi::check_candle(candle)) {
                 std::cout
@@ -35,7 +35,7 @@ int main() {
                 std::cout << " GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
             }
 #           endif
-#           if(0)
+#           if(1)
             for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                 xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle(intrade_bar_common::currency_pairs[s], candles);
                 if(intrade_bar::IntradeBarApi::check_candle(candle)) {
@@ -65,7 +65,7 @@ int main() {
                 std::cout << "GBPCHF error t: " << xtime::get_str_date_time(candle.timestamp) << std::endl;
             }
 #           endif
-            if(xtime::get_second_minute(timestamp) >= 59)
+            if(xtime::get_second_minute(timestamp) >= 57)
             for(size_t s = 0; s < intrade_bar_common::CURRENCY_PAIRS; ++s) {
                 xquotes_common::Candle candle = intrade_bar::IntradeBarApi::get_candle(intrade_bar_common::currency_pairs[s], candles);
                 if(intrade_bar::IntradeBarApi::check_candle(candle)) {

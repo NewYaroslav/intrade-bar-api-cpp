@@ -9,6 +9,7 @@
 #include <gzip/decompress.hpp>
 #include <nlohmann/json.hpp>
 #include <xtime.hpp>
+#include <algorithm>
 
 //#include "intrade-bar-api.hpp"
 #include "intrade-bar-https-api.hpp"
@@ -23,21 +24,38 @@ int main() {
     auth_file >> auth_json;
     auth_file.close();
 
-    intrade_bar::IntradeBarHttpApi iApi;
-    int err_connect = iApi.connect(auth_json);
+    intrade_bar::IntradeBarHttpApi intrade_bar_api;
+    int err_connect = intrade_bar_api.connect(auth_json);
     std::cout << "connect code: " << err_connect << std::endl;
     if(err_connect != 0) return 0;
 
-    std::cout << "user id: " << iApi.get_user_id() << std::endl;
-    std::cout << "user hash: " << iApi.get_user_hash() << std::endl;
-    std::cout << "balance: " << iApi.get_balance() << std::endl;
-    std::cout << "is demo: " << iApi.demo_account() << std::endl;
-    std::cout << "is account currency RUB: " << iApi.account_rub_currency() << std::endl;
-    iApi.async_request_balance();
+    xquotes_common::Candle candle;
 
-    std::cout << "request_profile: " << iApi.request_profile() << std::endl;
+    /* получаем массив цен */
+    std::vector<intrade_bar::StreamTick> prices;
+    int err_get_price_now = intrade_bar_api.get_price_now(prices);
+    std::cout << "price now code: " << err_get_price_now << std::endl;
+    for(size_t i = 0; i < prices.size(); ++i) {
+        std::cout << prices[i].symbol << " price " << prices[i].price << std::endl;
+        if(prices[i].symbol == "EURUSD") prices[i].price = 0;
+    }
+    auto it = std::find_if(prices.begin(), prices.end(), [](const intrade_bar::StreamTick &tick){
+        return (tick.price == 0);
+    });
+    if(it != prices.end()) std::cout << "The first price == 0 is " << it->symbol << std::endl;
+
+    /* выводим данные пользователя */
+    std::cout << "user id: " << intrade_bar_api.get_user_id() << std::endl;
+    std::cout << "user hash: " << intrade_bar_api.get_user_hash() << std::endl;
+    std::cout << "balance: " << intrade_bar_api.get_balance() << std::endl;
+    std::cout << "is demo: " << intrade_bar_api.demo_account() << std::endl;
+    std::cout << "is account currency RUB: " << intrade_bar_api.account_rub_currency() << std::endl;
+    intrade_bar_api.async_request_balance();
+
+    std::cout << "request_profile: " << intrade_bar_api.request_profile() << std::endl;
     xtime::delay(5);
-    std::cout << "request_profile: " << iApi.request_profile() << std::endl;
+    std::cout << "request_profile: " << intrade_bar_api.request_profile() << std::endl;
+
 #if(0)
     std::vector<double> prices;
     std::vector<xtime::timestamp_t> timestamps;
@@ -74,14 +92,15 @@ int main() {
     }
 #endif
 
+#if(0)
     std::vector<xquotes_common::Candle> candles;
-    iApi.get_historical_data(0,xtime::get_timestamp(18,2,2020), xtime::get_timestamp(18,2,2020,1), candles);
+    intrade_bar_api.get_historical_data(0,xtime::get_timestamp(18,2,2020), xtime::get_timestamp(18,2,2020,1), candles);
     std::cout << "candles: " << candles.size() << std::endl;
 
     double delay = 0;
     uint64_t id_deal = 0;
     xtime::timestamp_t timestamp_open = 0;
-    int err_sprint = iApi.open_bo_sprint(10, 50, intrade_bar::SELL, 60*3, delay, id_deal, timestamp_open);
+    int err_sprint = intrade_bar_api.open_bo_sprint(10, 50, intrade_bar::SELL, 60*3, delay, id_deal, timestamp_open);
     std::cout << "open_bo_sprint: " << err_sprint << std::endl;
     std::cout << "delay: " << delay << std::endl;
     std::cout << "id_deal: " << id_deal << std::endl;
@@ -90,14 +109,15 @@ int main() {
     if(err_sprint == intrade_bar::OK)
     while(true) {
         double price = 0, profit = 0;
-        iApi.async_request_balance();
-        std::cout << "balance: " << iApi.get_balance() << std::endl;
-        int err_check = iApi.check_bo(id_deal, price, profit);
+        intrade_bar_api.async_request_balance();
+        std::cout << "balance: " << intrade_bar_api.get_balance() << std::endl;
+        int err_check = intrade_bar_api.check_bo(id_deal, price, profit);
         std::cout << "check_bo: " << err_check << std::endl;
         std::cout << "price: " << price << std::endl;
         std::cout << "profit: " << profit << std::endl;
         xtime::delay(5);
     }
+#endif
     while(true) {
         std::this_thread::yield();
     }

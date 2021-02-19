@@ -169,20 +169,22 @@ namespace intrade_bar {
          * \param candles_src Приритетный контейнер с данными. Ключ - имя символа, значение - бар/свеча
          * \param candles_add Второстепенный контейнер с данными. Ключ - имя символа, значение - бар/свеча
          * \param output_candles Контейнер с конечными данными
+         * \param is_check_timestamp Флаг проверки метки времени бара, по умолчанию проверяется совпадение метки времени
          */
         template<class SYMBOLS_TYPE, class CANDLE_TYPE>
         void merge_candles(
                 const SYMBOLS_TYPE &symbols,
                 const std::map<std::string, CANDLE_TYPE> &candles_src,
                 const std::map<std::string, CANDLE_TYPE> &candles_add,
-                std::map<std::string, CANDLE_TYPE> &output_candles) {
+                std::map<std::string, CANDLE_TYPE> &output_candles,
+                const bool is_check_timestamp = true) {
             for(uint32_t symbol = 0; symbol < symbols.size(); ++symbol) {
                 auto it_src = candles_src.find(symbols[symbol]);
                 auto it_add = candles_add.find(symbols[symbol]);
                 if(it_src == candles_src.end() && it_add == candles_add.end()) continue;
                 output_candles[symbols[symbol]] = it_src->second;
                 if(it_add == candles_add.end()) continue;
-                if(it_src->second.timestamp != it_add->second.timestamp) continue;
+                if(is_check_timestamp && it_src->second.timestamp != it_add->second.timestamp) continue;
                 auto it_new = output_candles.find(symbols[symbol]);
                 it_new->second.close = it_src->second.close != 0.0 ? it_src->second.close : it_add->second.close != 0.0 ? it_add->second.close : 0.0;
                 it_new->second.high = it_src->second.high != 0.0 ? it_src->second.high : it_add->second.high != 0.0 ? it_add->second.high : 0.0;
@@ -269,7 +271,8 @@ namespace intrade_bar {
                     is_use_hist_downloading]() {
                 const uint32_t standart_thread_delay = 10;
 
-                /* сначала инициализируем исторические данные */
+                /* сначала инициализируем исторические данные
+                 */
                 uint32_t hist_data_number_bars = user_number_bars;
                 uint64_t last_minute = 0;
                 while(!is_stop_command) {
@@ -325,8 +328,10 @@ namespace intrade_bar {
                      * собираем актуальные цены бара и вызываем callback
                      */
                     if((timestamp - last_timestamp) < xtime::SECONDS_IN_MINUTE) {
-                        std::map<std::string,xquotes_common::Candle> candles;
+
+                        std::map<std::string, xquotes_common::Candle> candles;
                         const uint32_t second = xtime::get_second_minute(timestamp);
+
                         for(uint32_t symbol_index = 0;
                             symbol_index < intrade_bar_common::CURRENCY_PAIRS;
                             ++symbol_index) {
@@ -341,8 +346,37 @@ namespace intrade_bar {
                                 websocket_api.get_timestamp_candle(symbol_index, timestamp);
                             }
                         }
-                        /* вызов callback */
-                        if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
+
+                        /* проверяем, есть ли пробел в данных */
+                        auto it_no_candle  = std::find_if(candles.begin(), candles.end(),
+                            [](const std::pair<std::string, xquotes_common::Candle> &candle) {
+                            return (candle.second.close == 0);
+                        });
+                        if(it_no_candle != candles.end()) {
+                            std::vector<intrade_bar::StreamTick> prices;
+                            std::map<std::string, xquotes_common::Candle> array_merge_candles;
+                            std::map<std::string, xquotes_common::Candle> price_now_candles;
+                            if(http_api.get_price_now(prices) == OK) {
+                                for(size_t i = 0; i < prices.size(); ++i) {
+                                    xquotes_common::Candle candle;
+                                    candle.open = candle.low = candle.high = candle.close = prices[i].price;
+                                    candle.timestamp = xtime::get_first_timestamp_minute(prices[i].timestamp);
+                                    price_now_candles[prices[i].symbol] = candle;
+                                }
+                                merge_candles(
+                                    intrade_bar_common::currency_pairs,
+                                    candles,
+                                    price_now_candles,
+                                    array_merge_candles,
+                                    false);
+
+                                if(callback != nullptr) callback(array_merge_candles, EventType::NEW_TICK, timestamp);
+                            } else {
+                                if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
+                            }
+                        } else {
+                            if(callback != nullptr) callback(candles, EventType::NEW_TICK, timestamp);
+                        }
                     }
 
                     /* Далее загрузка исторических данных и повторный вызов callback, если нужно
@@ -382,15 +416,16 @@ namespace intrade_bar {
 
                             const uint32_t bars = 3;
                             std::vector<std::map<std::string,xquotes_common::Candle>> array_candles;
+
                             /* качаем два бара, так как один бар скачать не выйдет */
                             download_historical_data(
                                 array_candles,
                                 download_date_timestamp,
-                                bars,    // количество баров
-                                50,      // задержка между потоками
-                                10,       // количество попыток загрузки
-                                10,      // таймаут
-                                0);      // загружаем данные во все потоки
+                                bars,       // количество баров
+                                50,         // задержка между потоками
+                                10,         // количество попыток загрузки
+                                10,         // таймаут
+                                0);         // загружаем данные во все потоки
                             if(is_stop_command) return;
 
                             /* сливаем данные исторические и полученные от потока котировок
@@ -406,6 +441,7 @@ namespace intrade_bar {
                                         symbol_index,
                                         download_date_timestamp);
                                 }
+
                                 merge_candles(
                                     intrade_bar_common::currency_pairs,
                                     array_candles[bars-1], // берем последний бар из array_candles
@@ -451,11 +487,59 @@ namespace intrade_bar {
                                     download_date_timestamp);
                             }
 
-                            /* вызываем callback функцию */
-                            if(callback != nullptr) callback(
-                                real_candles,
-                                EventType::HISTORICAL_DATA_RECEIVED,
-                                download_date_timestamp);
+                            /* проверяем, есть ли пробел в данных */
+                            if(l < (number_new_bars - 1)) {
+                                /* вызываем callback функцию */
+                                if(callback != nullptr) callback(
+                                    real_candles,
+                                    EventType::HISTORICAL_DATA_RECEIVED,
+                                    download_date_timestamp);
+                                continue;
+                            }
+
+                            auto it_no_candle  = std::find_if(real_candles.begin(), real_candles.end(),
+                                [](const std::pair<std::string, xquotes_common::Candle> &candle) {
+                                return (candle.second.close == 0);
+                            });
+                            if(it_no_candle != real_candles.end()) {
+                                /* найден бар с пропуском данных */
+
+                                /* загружаем последние данные */
+                                std::vector<intrade_bar::StreamTick> prices;
+                                std::map<std::string, xquotes_common::Candle> array_merge_candles;
+                                std::map<std::string, xquotes_common::Candle> price_now_candles;
+                                if(http_api.get_price_now(prices) == OK) {
+                                    for(size_t i = 0; i < prices.size(); ++i) {
+                                        xquotes_common::Candle candle;
+                                        candle.open = candle.low = candle.high = candle.close = prices[i].price;
+                                        candle.timestamp = xtime::get_first_timestamp_minute(prices[i].timestamp);
+                                        price_now_candles[prices[i].symbol] = candle;
+                                    }
+
+                                    /* проводим слияние данных */
+                                    merge_candles(
+                                        intrade_bar_common::currency_pairs,
+                                        real_candles,
+                                        price_now_candles,
+                                        array_merge_candles,
+                                        false);
+
+                                    if(callback != nullptr) callback(
+                                        array_merge_candles,
+                                        EventType::HISTORICAL_DATA_RECEIVED,
+                                        download_date_timestamp);
+                                } else {
+                                    if(callback != nullptr) callback(
+                                        real_candles,
+                                        EventType::HISTORICAL_DATA_RECEIVED,
+                                        download_date_timestamp);
+                                }
+                            } else {
+                                if(callback != nullptr) callback(
+                                    real_candles,
+                                    EventType::HISTORICAL_DATA_RECEIVED,
+                                    download_date_timestamp);
+                            }
                         }
 					}
 
